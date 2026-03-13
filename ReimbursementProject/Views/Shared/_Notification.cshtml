@@ -1,41 +1,139 @@
-﻿@if (TempData["success"] != null)
-{
-    var message = TempData["success"].ToString();
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
-    <script type="text/javascript">
-        $(document).ready(function () {
-            var message = '@message';
-            toastr.success(message);
+﻿@inject IHttpContextAccessor HttpContextAccessor
 
-            // Send to server
-            $.ajax({
-                type: "POST",
-                url: '/Dashboard/Log',
-                data: JSON.stringify({ message: message }),
-                contentType: "application/json"
-            });
-        });
-    </script>
+@{
+    var empId = HttpContextAccessor.HttpContext?.User?.FindFirst("EmpID")?.Value;
 }
 
-@if (TempData["error"] != null)
-{
-    var message = TempData["error"].ToString();
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
-    <script type="text/javascript">
-        $(document).ready(function () {
-            var message = '@message';
-            toastr.error(message);
+<div class="nav-item dropdown">
+    <a class="nav-link position-relative" href="#" id="notifDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="fas fa-bell"></i>
+        <span id="notifCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none">
+            0
+        </span>
+    </a>
+    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="notifDropdown" style="width: 300px;" id="notifList">
+        <div class="dropdown-header d-flex justify-content-between align-items-center">
+            <span>Notifications</span>
+            <button id="clearAllBtn" class="btn btn-sm btn-outline-danger">Clear All</button>
+        </div>
+        <div><hr class="dropdown-divider" /></div>
+        <!-- Notifications will be appended here dynamically -->
+    </div>
+</div>
+<style>
+    .notif-message {
+        word-wrap: break-word; /* break long words */
+        white-space: normal; /* allow line breaks */
+        overflow-wrap: anywhere; /* modern support for long words/URLs */
+    }
 
-            // Send to server
-            $.ajax({
-                type: "POST",
-                url: '/Notification/Log',
-                data: JSON.stringify({ message: message }),
-                contentType: "application/json"
-            });
+    /* Optional: make the notification item not stretch too wide */
+    #notifList .dropdown-item {
+        max-width: 100%;
+    }
+
+    /* Optional: ensure dropdown scrolls if too many notifications */
+    #notifList {
+        max-height: 400px; /* adjust as needed */
+        overflow-y: auto;
+    }
+</style>
+
+<script>
+    const empId = '@empId';
+    //for browser notification
+     let lastCount = 0;
+     //for first load we skipped the browser notification
+     let isFirstLoad = true;
+
+    // Ask browser permission
+    if ("Notification" in window && Notification.permission !== "granted") {
+        Notification.requestPermission().then(permission => {
+            console.log("Notification permission:", permission);
         });
-    </script>
-}
+    }
+
+    async function loadNotifications() {
+        if (!empId) return;
+
+        const response = await fetch(`/Notification/GetUnreadNotifications`);
+        const data = await response.json();
+
+        const notifCount = document.getElementById('notifCount');
+        const notifList = document.getElementById('notifList');
+            // Show browser notification ONLY if new notification arrives
+    if (!isFirstLoad &&Notification.permission === "granted" && data.length > lastCount) {
+        const latest = data[0];
+        new Notification("New Notification", {
+            body: latest.message,
+            icon: "/images/pioneerimg.jpg" // optional
+        });
+    }
+
+    lastCount = data.length;
+    isFirstLoad = false;
+
+
+
+           if (data.length > 0) {
+        notifCount.innerText = data.length;
+        notifCount.classList.remove("d-none");
+    } else {
+        notifCount.innerText = "0";
+        notifCount.classList.add("d-none");
+    }
+
+        // Clear previous
+        notifList.querySelectorAll('li.dynamic-notif').forEach(e => e.remove());
+
+        // Append new
+        data.forEach(n => {
+            const li = document.createElement('li');
+            li.className = 'dropdown-item dynamic-notif';
+               li.innerHTML = `
+        <div class="notif-item d-flex align-items-start gap-2">
+            <div class="notif-icon text-primary">
+                <i class="fas fa-bell"></i>
+            </div>
+
+            <div class="flex-grow-1">
+                <div class="notif-message">
+                    ${n.message}
+                </div>
+                <small class="text-muted">New</small>
+            </div>
+
+            <button class="btn btn-sm btn-outline-danger"
+                    title="Mark as read"
+                    onclick="markAsRead(${n.id})">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+
+            notifList.appendChild(li);
+        });
+    }
+
+    async function markAsRead(id) {
+        await fetch(`/Notification/MarkAsRead?id=${id}`, { method: 'POST' });
+        loadNotifications();
+    }
+    //clear all notification
+        document.getElementById('clearAllBtn').addEventListener('click', async () => {
+        if (!empId) return;
+
+
+
+        await fetch('/Notification/MarkAllAsRead', { method: 'POST' });
+
+        // Reload notifications to update UI
+        loadNotifications();
+    });
+
+
+    loadNotifications();
+
+    // Optionally, poll every 10-15 seconds
+    setInterval(loadNotifications, 15000);
+</script>

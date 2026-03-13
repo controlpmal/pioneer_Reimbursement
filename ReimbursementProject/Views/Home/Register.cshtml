@@ -3,75 +3,226 @@
     ViewData["Title"] = "Register";
 }
 
+<style>
+    .required-star {
+        color: red;
+        margin-left: 2px;
+        font-weight: bold;
+    }
+</style>
+
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-lg-7 col-md-9">
             <div class="card shadow-lg border-0 rounded-4">
                 <div class="card-header bg-gradient bg-success text-white text-center rounded-top-4">
-                    <h4 class="mb-0"><i class="fas fa-user-plus"></i> Employee Registration</h4>
+                    <h4 class="mb-0">
+                        <i class="fas fa-user-plus"></i> Employee Registration
+                    </h4>
                 </div>
 
                 <div class="card-body p-4">
+
+                    <!-- Loader Overlay -->
+                    <div id="loadingOverlay" class="loading-overlay" style="display:none;">
+                        <div class="loading-box">
+                            <img src="https://i.gifer.com/ZZ5H.gif" alt="loading" class="loading-icon" />
+                            <p class="loading-text">Sending...</p>
+                        </div>
+                    </div>
+
                     <!-- Global Alert -->
                     <div id="registerAlert" class="alert d-none alert-dismissible fade show" role="alert">
                         <span id="registerAlertMessage"></span>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
 
                     <form id="registerForm" novalidate>
+
                         <!-- Employee ID + Name -->
                         <div class="row">
-                            <div class="col-md-6 mb-3 position-relative">
+                            <div class="col-md-6 mb-3">
                                 <label class="form-label fw-semibold">
                                     <i class="fas fa-id-badge"></i> Employee ID
+                                    <span class="required-star">*</span>
                                 </label>
-                                <input type="text" id="EmpID" class="form-control rounded-pill" placeholder="Enter Employee ID" required />
+                                <input type="text" id="EmpID" class="form-control rounded-pill"
+                                       placeholder="Enter Employee ID (PMA0111)" required />
                                 <div class="invalid-feedback" id="EmpIDError"></div>
                             </div>
 
-                            <div class="col-md-6 mb-3 position-relative">
+                            <div class="col-md-6 mb-3">
                                 <label class="form-label fw-semibold">
                                     <i class="fas fa-user"></i> Name
+                                    <span class="required-star">*</span>
                                 </label>
-                                <input type="text" id="EmpName" class="form-control rounded-pill" placeholder="Enter Name" required />
+                                <input type="text" id="EmpName" class="form-control rounded-pill"
+                                       placeholder="Enter Name" required />
                                 <div class="invalid-feedback" id="EmpNameError"></div>
                             </div>
                         </div>
 
-                        <!-- Designation + Department -->
+                        <!-- Designation + Department + Location -->
                         <div class="row">
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label class="form-label fw-semibold">
                                     <i class="fas fa-briefcase"></i> Designation
                                 </label>
-                                <input type="text" id="Designation" class="form-control rounded-pill" placeholder="Enter Designation" />
+                                <select id="Designation" class="form-select rounded-pill">
+                                    <option value="">Select Designation</option>
+                                    <option value="Accountant">Accountant</option>
+                                    <option value="A.G.M">A.G.M</option>
+                                    <option value="Assistant Manager">Assistant Manager</option>
+                                    <option value="Consultant">Consultant</option>
+                                    <option value="Co-ordinator">Co-ordinator</option>
+                                    <option value="Deputy Manager">Deputy Manager</option>
+                                    <option value="DET">DET</option>
+                                    <option value="Design">Design</option>
+                                    <option value="Driver">Driver</option>
+                                    <option value="Electrician">Electrician</option>
+                                    <option value="Engineer">Engineer</option>
+                                    <option value="Executive">Executive</option>
+                                    <option value="Fabricator">Fabricator</option>
+                                    <option value="Fitter">Fitter</option>
+                                    <option value="General Manager">General Manager</option>
+                                    <option value="GET">GET</option>
+                                    <option value="Grinderman">Grinderman</option>
+                                    <option value="Head">Head</option>
+                                    <option value="Helper">Helper</option>
+                                    <option value="Housekeeper">Housekeeper</option>
+                                    <option value="Incharge">Incharge</option>
+                                    <option value="Jr. Daftsman">Jr. Daftsman</option>
+                                    <option value="Jr. Engineer">Jr. Engineer</option>
+                                    <option value="Lathe M/C Operator">Lathe M/C Operator</option>
+                                    <option value="Lathe Operator">Lathe Operator</option>
+                                    <option value="Manager">Manager</option>
+                                    <option value="Milling Operator">Milling Operator</option>
+                                    <option value="Operator">Operator</option>
+                                    <option value="Painter">Painter</option>
+                                    <option value="Pantry Boy">Pantry Boy</option>
+                                    <option value="Senior Fitter">Senior Fitter</option>
+                                    <option value="Sr. Engineer">Sr. Engineer</option>
+                                    <option value="Sr. Project Co-ordinator">Sr. Project Co-ordinator</option>
+                                    <option value="Surface M/C Operator">Surface M/C Operator</option>
+                                    <option value="Sweeper">Sweeper</option>
+                                    <option value="Team Leader- Assembly">Team Leader- Assembly</option>
+                                    <option value="VMC Programmer">VMC Programmer</option>
+                                    <option value="Welder">Welder</option>
+                                    <option value="Work Shop Incharge">Work Shop Incharge</option>
+                                </select>
                             </div>
-                            <div class="col-md-6 mb-3">
+
+                            <div class="col-md-4 mb-3">
                                 <label class="form-label fw-semibold">
                                     <i class="fas fa-building-columns"></i> Department
                                 </label>
-                                <input type="text" id="Dept" class="form-control rounded-pill" placeholder="Enter Department" />
+                                <select id="Dept" class="form-select rounded-pill">
+                                    <option value="">Select Department</option>
+                                    <option value="Accounts">Accounts</option>
+                                    <option value="Admin">Admin</option>
+                                    <option value="Application">Application</option>
+                                    <option value="Assembly">Assembly</option>
+                                    <option value="Design & Development">Design & Development</option>
+                                    <option value="Electrical & Control">Electrical & Control</option>
+                                    <option value="Electrical Shop Floor">Electrical Shop Floor</option>
+                                    <option value="Fabrication">Fabrication</option>
+                                    <option value="HK">HK</option>
+                                    <option value="Housekeeping">Housekeeping</option>
+                                    <option value="HR">HR</option>
+                                    <option value="IT">IT</option>
+                                    <option value="Manufacturing">Manufacturing</option>
+                                    <option value="Operation">Operation</option>
+                                    <option value="Pantry">Pantry</option>
+                                    <option value="Pre Fab">Pre Fab</option>
+                                    <option value="Project Coordination">Project Coordination</option>
+                                    <option value="Purchase">Purchase</option>
+                                    <option value="Quality">Quality</option>
+                                    <option value="Sales & Marketing">Sales & Marketing</option>
+                                    <option value="Store">Store</option>
+                                    <option value="Tool Room">Tool Room</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-map-marker-alt"></i> Company Location
+                                    <span class="required-star">*</span>
+                                </label>
+                                <select id="Location" class="form-select rounded-pill" required>
+                                    <option value="">Select Location</option>
+                                    <option value="GHAZIABAD">GHAZIABAD</option>
+                                    <option value="PUNE">PUNE</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Email + OTP -->
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-envelope"></i> Email
+                                    <span class="required-star">*</span>
+                                </label>
+                                <input type="email" id="Email" class="form-control rounded-pill"
+                                       placeholder="Enter Company Email" required />
+                                <div class="invalid-feedback" id="EmailError"></div>
+                            </div>
+                            <div class="col-md-4 mb-3 d-flex align-items-end">
+                                <button type="button" id="sendOtpBtn"
+                                        class="btn btn-primary w-100 rounded-pill">
+                                    Send OTP
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- OTP -->
+                        <div class="row" id="otpRow" style="display:none;">
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-key"></i> Enter OTP
+                                </label>
+                                <input type="text" id="OtpInput" class="form-control rounded-pill"
+                                       placeholder="Enter OTP" />
+                                <div class="invalid-feedback" id="OtpError"></div>
+                            </div>
+                            <div class="col-md-4 mb-3 d-flex align-items-end">
+                                <button type="button" id="verifyOtpBtn"
+                                        class="btn btn-warning w-100 rounded-pill">
+                                    Verify OTP
+                                </button>
                             </div>
                         </div>
 
                         <!-- Password + Confirm Password -->
                         <div class="row">
-                            <div class="col-md-6 mb-3 position-relative">
-                                <label class="form-label fw-semibold"><i class="fas fa-lock"></i> Password</label>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-lock"></i> Password
+                                    <span class="required-star">*</span>
+                                </label>
                                 <div class="input-group">
-                                    <input type="password" id="Password" class="form-control rounded-start-pill" placeholder="Enter Password" required />
-                                    <button class="btn btn-outline-secondary rounded-end-pill" type="button" id="togglePassword">
+                                    <input type="password" id="Password"
+                                           class="form-control rounded-start-pill"
+                                           placeholder="Enter Password" required />
+                                    <button class="btn btn-outline-secondary rounded-end-pill"
+                                            type="button">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 </div>
                                 <div class="invalid-feedback" id="PasswordError"></div>
                             </div>
 
-                            <div class="col-md-6 mb-3 position-relative">
-                                <label class="form-label fw-semibold"><i class="fas fa-lock"></i> Confirm Password</label>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-lock"></i> Confirm Password
+                                    <span class="required-star">*</span>
+                                </label>
                                 <div class="input-group">
-                                    <input type="password" id="ConfirmPassword" class="form-control rounded-start-pill" placeholder="Confirm Password" required />
-                                    <button class="btn btn-outline-secondary rounded-end-pill" type="button" id="toggleConfirmPassword">
+                                    <input type="password" id="ConfirmPassword"
+                                           class="form-control rounded-start-pill"
+                                           placeholder="Confirm Password" required />
+                                    <button class="btn btn-outline-secondary rounded-end-pill"
+                                            type="button">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 </div>
@@ -81,149 +232,307 @@
 
                         <!-- Register Button -->
                         <div class="d-grid mt-4">
-                            <button type="submit" id="registerBtn" class="btn btn-success rounded-pill py-2 fw-semibold" disabled>
+                            <button type="submit" id="registerBtn"
+                                    class="btn btn-primary rounded-pill py-2 fw-semibold" disabled>
                                 <i class="fas fa-paper-plane"></i> Register
                             </button>
-                            <small id="formHint" class="text-danger text-center mt-2 d-none">Please fill all required fields correctly.</small>
+                            <small class="text-danger text-center mt-2">
+                                * Indicates required fields
+                            </small>
                         </div>
+
                     </form>
 
                     <div class="text-center mt-3">
-                        <a class="btn btn-outline-secondary rounded-pill px-4" asp-controller="Home" asp-action="Login">
+                        <a class="btn btn-outline-secondary rounded-pill px-4"
+                           asp-controller="Home" asp-action="Login">
                             <i class="fas fa-sign-in-alt"></i> Back to Login
                         </a>
                     </div>
+
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+
+
 @section Scripts {
     <script>
-        function showAlert(message, type) {
-            const alertBox = $("#registerAlert");
-            const alertMessage = $("#registerAlertMessage");
-
-            alertBox.removeClass("d-none alert-success alert-danger alert-warning");
-            alertBox.addClass("alert-" + type);
-            alertMessage.text(message);
-
-            // Show the alert
-            alertBox.addClass("show");
-
-            // Scroll to top smoothly
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        $(function () {
+                     $(function () {
             const empIdInput = $("#EmpID");
             const empNameInput = $("#EmpName");
             const passwordInput = $("#Password");
             const confirmPasswordInput = $("#ConfirmPassword");
             const registerBtn = $("#registerBtn");
-            const formHint = $("#formHint");
+            const emailInput = $("#Email");
+            const sendOtpBtn = $("#sendOtpBtn");
+            const otpRow = $("#otpRow");
+            const otpInput = $("#OtpInput");
+            const verifyOtpBtn = $("#verifyOtpBtn");
+            const companylocation=$("#Location")
 
-            // 🔒 Initially disable the register button
-            registerBtn.prop("disabled", true);
+            let otpVerified = false;
+            let serverOtp = "";
 
-            // 🧠 Check all input conditions
-            function checkForm() {
-                const empId = empIdInput.val().trim();
-                const empName = empNameInput.val().trim();
-                const password = passwordInput.val().trim();
-                const confirmPassword = confirmPasswordInput.val().trim();
+            // Enable register button by default
+            registerBtn.prop("disabled", false);
 
-                const allFilled = empId && empName && password && confirmPassword;
-                const passwordsMatch = password === confirmPassword;
+            // Limit input lengths
+            empIdInput.attr("maxlength", 10);
+            empNameInput.attr("maxlength", 200);
+            passwordInput.attr("maxlength", 20);
+            confirmPasswordInput.attr("maxlength", 20);
 
-                if (allFilled && passwordsMatch) {
-                    registerBtn.prop("disabled", false);
-                    formHint.addClass("d-none");
-                } else {
-                    registerBtn.prop("disabled", true);
-                    formHint.removeClass("d-none");
+            // ================================
+            // SEND OTP
+            // ================================
+            $("#sendOtpBtn").click(function () {
+                const email = emailInput.val().trim();
+
+                if (!email) {
+                    Swal.fire("Error", "Please enter your email before sending OTP.", "error");
+                    return;
                 }
-            }
 
-            // 🔁 Monitor input fields
-            $("#EmpID, #EmpName, #Password, #ConfirmPassword").on("input", checkForm);
+                showLoader();
 
-            // 👁️ Toggle Password Visibility
-            $("#togglePassword").click(function () {
-                const input = $("#Password");
-                const icon = $(this).find("i");
-                const type = input.attr("type") === "password" ? "text" : "password";
-                input.attr("type", type);
-                icon.toggleClass("fa-eye fa-eye-slash");
+                $.get("/api/Employee/send", { toEmail: email }, function (res) {
+                    hideLoader();
+                    if (res.success) {
+                        serverOtp = res.otp;
+                        otpRow.show();
+                        Swal.fire("Success", res.message || "OTP sent successfully!", "success");
+
+                        sendOtpBtn.text("Resend OTP")
+                            .removeClass("btn-primary")
+                            .addClass("btn-warning");
+
+                    } else {
+                        Swal.fire("Error", res.message || "Failed to send OTP.", "error");
+                    }
+                }).fail(function (xhr) {
+                    hideLoader();
+                    Swal.fire("Error", xhr.responseJSON?.message || "Error sending OTP.", "error");
+                });
             });
 
-            $("#toggleConfirmPassword").click(function () {
-                const input = $("#ConfirmPassword");
-                const icon = $(this).find("i");
-                const type = input.attr("type") === "password" ? "text" : "password";
-                input.attr("type", type);
-                icon.toggleClass("fa-eye fa-eye-slash");
+            // ================================
+            // VERIFY OTP
+            // ================================
+            $("#verifyOtpBtn").click(function () {
+                const entered = otpInput.val().trim();
+
+                if (!entered) {
+                    Swal.fire("Error", "Please enter the OTP first.", "error");
+                    return;
+                }
+
+                if (entered === serverOtp) {
+                    otpVerified = true;
+                    verifyOtpBtn.removeClass("btn-warning btn-danger").addClass("btn-success");
+                    emailInput.prop("disabled", true);
+                    Swal.fire("Success", "OTP verified successfully!", "success");
+                } else {
+                    otpVerified = false;
+                    verifyOtpBtn.removeClass("btn-warning btn-success").addClass("btn-danger");
+                    Swal.fire("Error", "Invalid OTP. Please try again.", "error");
+                }
             });
 
-            // ✅ Register Submit
+            // Password Toggles
+             $("#togglePassword").click(function () { const input = $("#Password"); $(this).find("i").toggleClass("fa-eye fa-eye-slash"); input.attr("type", input.attr("type") === "password" ? "text" : "password"); }); $("#toggleConfirmPassword").click(function () { const input = $("#ConfirmPassword"); $(this).find("i").toggleClass("fa-eye fa-eye-slash"); input.attr("type", input.attr("type") === "password" ? "text" : "password"); });
+
+            // ================================
+            // FORM SUBMISSION
+            // ================================
             $("#registerForm").on("submit", function (e) {
                 e.preventDefault();
-                $(".invalid-feedback").text("");
-                $("input").removeClass("is-invalid");
 
                 const empId = empIdInput.val().trim();
                 const empName = empNameInput.val().trim();
-                const designation = $("#Designation").val().trim();
-                const dept = $("#Dept").val().trim();
                 const password = passwordInput.val().trim();
                 const confirmPassword = confirmPasswordInput.val().trim();
+                const location=companylocation.val().trim();
 
-                let valid = true;
+                // Employee ID validation
+                if (!empId.startsWith("PMA0")) {
+                    Swal.fire("Error", "Employee code is not in the correct format. It must start with PMA0.", "error");
+                    empIdInput.focus();
+                    return;
+                }
 
-                if (!empId.startsWith("PMA")) {
-                    $("#EmpIDError").text("Employee ID must start with 'PMA'.");
-                    empIdInput.addClass("is-invalid");
-                    valid = false;
+                if (empId.length > 10) {
+                    Swal.fire("Error", "Employee code cannot exceed 10 characters.", "error");
+                    empIdInput.focus();
+                    return;
+                }
+
+                // Employee Name validation
+                if (!empName) {
+                    Swal.fire("Error", "Employee name cannot be empty.", "error");
+                    empNameInput.focus();
+                    return;
+                }
+
+                if (empName.length > 100) {
+                    Swal.fire("Error", "Employee name cannot exceed 20 characters.", "error");
+                    empNameInput.focus();
+                    return;
+                }
+
+                // OTP validation
+                if (!otpVerified) {
+                    Swal.fire("Error", "Please Click on send otp and then verify otp.", "error");
+                    return;
+                }
+
+                // Password validation
+                if (!password || !confirmPassword) {
+                    Swal.fire("Error", "Password cannot be empty.", "error");
+                    passwordInput.focus();
+                    return;
                 }
 
                 if (password !== confirmPassword) {
-                    $("#ConfirmPasswordError").text("Passwords do not match.");
-                    confirmPasswordInput.addClass("is-invalid");
-                    valid = false;
+                    Swal.fire("Error", "Passwords do not match.", "error");
+                    confirmPasswordInput.focus();
+                    return;
                 }
 
-                if (!valid) return;
+                if (password.length > 20) {
+                    Swal.fire("Error", "Password cannot exceed 20 characters.", "error");
+                    passwordInput.focus();
+                    return;
+                }
 
-                $.ajax({
-                    url: "/api/Employee/Register",
-                    type: "POST",
-                    contentType: "application/json",
-                    data: JSON.stringify({
+                // Confirmation before registration
+                Swal.fire({
+                    title: "Confirm",
+                    text: "Do you want to submit your registration?",
+                    icon: "question",
+                    showCancelButton: true,
+                    confirmButtonText: "Yes",
+                    cancelButtonText: "No"
+                }).then(result => {
+                    if (!result.isConfirmed) return;
+
+                    const data = {
                         EmpID: empId,
                         EmpName: empName,
-                        Designation: designation,
-                        Dept: dept,
-                        Password: password
-                    }),
-                    success: function (res) {
-                        showAlert(res.message || "Registration successful.", "success");
-                        $("#registerForm")[0].reset();
-                        registerBtn.prop("disabled", true);
-                        formHint.removeClass("d-none");
-                    },
-                    error: function (xhr) {
-                        showAlert(xhr.responseJSON?.message || "Error occurred while registering.", "danger");
-                    }
+                        Designation: $("#Designation").val(),
+                        Dept: $("#Dept").val(),
+                        Password: password,
+                        MailID: emailInput.val().trim(),
+                        CompanyLocation:location
+                    };
+
+                    showLoader();
+
+                    $.ajax({
+                        url: "/api/Employee/Register",
+                        type: "POST",
+                        contentType: "application/json",
+                        data: JSON.stringify(data),
+                        success: function (res) {
+                            hideLoader();
+                            Swal.fire("Success", res.message || "Registered successfully!", "success");
+
+                            $("#registerForm")[0].reset();
+                            empIdInput.val("PMA0");
+                            otpVerified = false;
+                            otpRow.hide();
+                            sendOtpBtn.text("Send OTP").removeClass("btn-warning btn-success btn-danger").addClass("btn-primary");
+                        },
+                        error: function (xhr) {
+                            hideLoader();
+                            Swal.fire("Error", xhr.responseJSON?.message || "Error during registration.", "error");
+                        }
+                    });
                 });
             });
+
+            function showLoader() {
+                $("#loadingOverlay").css("display", "flex");
+            }
+            function hideLoader() {
+                $("#loadingOverlay").hide();
+            }
         });
+
+
     </script>
 }
 
 <style>
     #registerBtn:disabled {
-        opacity: 0.6;
+        opacity: 0.8;
         cursor: not-allowed;
     }
+
+    /* Overlay with blur */ .loading-overlay {
+        position: fixed;
+        inset: 0;
+        backdrop-filter: blur(6px); /* 🔥 background blur effect */
+        background: rgba(255, 255, 255, 0.3);
+        display: none; /* hidden by default */
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+    }
+    /* Box container */
+
+    .loading-box {
+        background: rgba(255, 255, 255, 0.8);
+        padding: 30px 40px;
+        border-radius: 20px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        text-align: center;
+        animation: floaty 2s ease-in-out infinite;
+    }
+    /* Floating animation */
+
+    @@keyframes floaty {
+        0%, 100% {
+            transform: translateY(0px);
+        }
+
+        50% {
+            transform: translateY(-6px);
+        }
+    }
+    /* Icon */
+
+    .loading-icon {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 12px;
+    }
+    /* Text */
+
+    .loading-text {
+        font-size: 16px;
+        font-weight: 500;
+        color: #333;
+        font-family: "Inter", sans-serif;
+    }
+
+    .check-info-row td {
+        background-color: #f8f9fa;
+        animation: fadeIn 0.3s ease-in-out;
+    }
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-5px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 </style>
+

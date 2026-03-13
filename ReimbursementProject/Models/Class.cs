@@ -2,6 +2,7 @@
 {
     public string EmpID { get; set; } = "";
     public string EmpName { get; set; } = "";
+    public string? MailID { get; set; }
     public string? IRB { get; set; }
     public string? IRBName { get; set; }
     public string? SiteName { get; set; }
@@ -12,6 +13,10 @@
     public string? Status { get; set; }
     public string? Rejection { get; set; }
     public long? ExpenseId { get; set; }
+    public DateTime? IRBApprovedDate { get; set; }  // datetime
+    public DateTime? HRApprovelDate { get; set; }  // datetime
+    public DateTime? AGMApprovelDate { get; set; }  // datetime
+    public DateTime? AccountApprovelDate { get; set; }  // datetime
 }
 
 public class ExpenseItemDto
@@ -29,6 +34,8 @@ public class ExpenseItemDto
     public string? RequireSpecialApproval { get; set; }
     public string? Status { get; set; }
     public string? Rejection { get; set; }
+    public string? Reason { get; set; }
+    public string? SiteName { get; set; }
 }
 
 

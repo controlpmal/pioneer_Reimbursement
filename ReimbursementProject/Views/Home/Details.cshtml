@@ -7,47 +7,57 @@
     var designationClaim = User.FindFirst("Designation")?.Value ?? "";
     var irbClaim = User.FindFirst("IRB")?.Value ?? "";
 }
+@if (!(User.Identity?.IsAuthenticated ?? false))
+{
+    <script>
+        window.location.href = "/Home/Login";
+    </script>
+}
 
-<link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+
 
 <div class="container-fluid mt-3">
     <!-- ✅ Filter/Search Bar -->
     <div class="row mb-3">
-        <div class="col-md-3 col-12 mb-2">
+        <div class="col-md-3 col-12 mb-2  d-none">
             <select id="filterType" class="form-select">
                 <option value="all">All</option>
                 <option value="empid">EmpID</option>
                 <option value="name">Name</option>
             </select>
         </div>
-        <div class="col-md-6 col-12 mb-2">
-            <input type="text" id="filterInput" class="form-control" placeholder="Search...">
+        <div class="col-md col mb-2">
+            <input type="text" id="filterInput" class="form-control" placeholder="Search by empid or by empname...">
         </div>
-        <div class="col-md-3 col-12 mb-2 text-end">
+        <div class="col-md-3 col-12 mb-2 text-end d-none">
             <button class="btn btn-secondary w-100 w-md-auto" onclick="clearFilter()">Clear Filter</button>
         </div>
     </div>
 
 
-    <div class="table-responsive">
-        <table class="table table-striped table-hover align-middle" id="groupsTable">
-            <thead class="table-info">
+    <div class="table-responsive shadow-sm rounded">
+        <table class="table table-hover align-middle mb-0" id="groupsTable">
+            <thead class="table-light text-secondary small">
                 <tr>
-                    <th>EmpID</th>
-                    <th>EmpName</th>
-                    <th>IRB</th>
+                    <th>Expense ID</th>
+                    <th>Emp ID</th>
+                    <th>Employee Name</th>
+                
                     <th>IRB Name</th>
-                    <th>Site</th>
+               
                     <th>Project</th>
-                    <th>Submission Date</th>
-                    <th>Total Claim</th>
-                    <th>Total Sanctioned</th>
+                    <th class="text-center">Submission Date</th>
+                    <th class="text-end">Total Claim</th>
+                    <th class="text-end">Sanctioned</th>
                     <th>Status</th>
                     <th class="text-center">Action</th>
                 </tr>
             </thead>
-            <tbody></tbody>
+            <tbody class="small">
+                <!-- Dynamic rows -->
+            </tbody>
         </table>
+        <div id="pagination" class="mt-3 text-center"></div>
     </div>
 </div>
 
@@ -59,7 +69,63 @@
     </div>
 </div>
 
+<div id="printArea" class="print-area">
+    <h3 style="text-align:center;">
+        Pioneer Machine & Automation (P) LTD.
+    </h3>
+    <h3 style="text-align:center;">
+        (A-1/175,176 & 177, Sec-17, Kavi Nagar Industrial Area, Ghaziabad-201002)
 
+    </h3>
+    <h3 style="text-align:center;" id="pSiteName">
+        T. A. BILL
+
+    </h3>
+    <hr>
+
+    <p>
+        <strong>Employee Name:</strong> <span id="pEmpName"></span><br>
+        <strong>Employee ID:</strong> <span id="pEmpId"></span><br>
+        <strong>Site Name:</strong> <span id="pSite"></span><br>
+        <strong>Project Code:</strong> <span id="pProject"></span><br>
+        <strong>Submission Date:</strong> <span id="pDate"></span><br>
+        <strong>journey approved by:</strong> <span id="pIrb"></span><br>
+        <strong>Expense ID:</strong> <span id="pExpenseId"></span>
+
+    </p>
+
+    <table border="1" width="100%" cellspacing="0" cellpadding="6">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Expense Type</th>
+                <th>Description of expense</th>
+                <th>Qty</th>
+                <th>Members</th>
+                <th>Bill</th>
+                <th>Claim</th>
+                <th>Amount</th>
+                @*  <th>Status</th> *@
+            </tr>
+        </thead>
+        <tbody id="printTableBody"></tbody>
+    </table>
+
+    <br>
+    <p>
+        @*  <strong>Total Claim:</strong> <span id="pTotalClaim"></span><br> *@
+        <div class="text-end">
+            <strong>Total Amount:</strong>
+            <span id="pTotalSanction"></span>
+        </div>
+    </p>
+
+    <br><br>
+    <p style="text-align:right;" id="pApprovel">
+        Checked by Kuldeep Kumar  --   Aproved by Arpana Rao<br>
+
+    </p>
+</div>
 
 
 
@@ -78,7 +144,7 @@
                             <tr>
                                 <th>Date</th>
                                 <th>Type</th>
-                                <th>Travel</th>
+                                <th>Travel/time</th>
                                 <th>Qty</th>
                                 <th>Fellow</th>
                                 <th>Claim</th>
@@ -89,41 +155,89 @@
                             </tr>
                         </thead>
                         <tbody></tbody>
+
                     </table>
                 </div>
             </div>
-            <div class="modal-footer flex-wrap">
-                <button id="acceptGroupBtn" class="btn btn-success me-2 mb-2">Submit</button>
-                <button id="rejectGroupBtn" class="btn btn-danger me-2 mb-2">Reject All</button>
-                <button class="btn btn-secondary mb-2" data-bs-dismiss="modal">Close</button>
+            <div class="modal-footer flex-wrap justify-content-between align-items-center">
+                <!-- ✅ Totals Section -->
+                <div class="d-flex flex-column flex-md-row align-items-center gap-3">
+                    <div class="card shadow-sm border-0 bg-light px-4 py-2 rounded-3 text-center">
+                        <h6 class="mb-1 text-muted fw-semibold">TOTAL CLAIM</h6>
+                        <h4 id="totalClaim" class="text-primary fw-bold mb-0">0</h4>
+                    </div>
+                    <div class="card shadow-sm border-0 bg-light px-4 py-2 rounded-3 text-center">
+                        <h6 class="mb-1 text-muted fw-semibold">TOTAL SANCTIONED</h6>
+                        <h4 id="totalSanctioned" class="text-success fw-bold mb-0">0</h4>
+                    </div>
+                </div>
+
+                <!-- ✅ Action Buttons -->
+                <div class="d-flex flex-wrap justify-content-end gap-2 mt-3 mt-md-0">
+                    <button id="acceptGroupBtn" class="btn btn-success px-4">Submit</button>
+                    <button id="rejectGroupBtn" class="btn btn-danger px-4">Reject All</button>
+                    <button class="btn btn-sm btn-secondary" onclick="printGroupBill()">
+                        🖨️ Print Bill
+                    </button>
+                    <button  class="btn btn-sm btn-primary" onclick="downloadImagesAsPDF()">
+                        <i class="bi bi-file-earmark-pdf"></i> Download Img PDF
+                    </button>
+                    <button class="btn btn-secondary px-4" data-bs-dismiss="modal">Close</button>
+                </div>
             </div>
+
         </div>
     </div>
 </div>
 <!-- 🔍 File Viewer Modal -->
+<!-- 🔍 File Viewer Modal -->
 <div class="modal fade" id="fileViewerModal" tabindex="-1" aria-labelledby="fileViewerLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-sm-down">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="fileViewerLabel">View Bill</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <!-- Excel Preview (hidden by default) -->
-                <div id="excelContainer" style="display:none;"></div>
+                <div id="excelContainer" style="display:none; overflow-x:auto;"></div>
 
-                <!-- Iframe for PDF/Image -->
+                <!-- 🔄 Responsive Image -->
+                <div id="imageContainer" class="text-center" style="display:none;">
+                    <img id="imageViewer" src="" alt="Bill Image" class="img-fluid rounded shadow" style="max-height:80vh; object-fit:contain;">
+                </div>
+
+                <!-- PDF or fallback -->
                 <iframe id="fileViewerFrame" width="100%" height="600px" style="display:none; border:none;"></iframe>
 
-                <!-- Message for unsupported formats -->
                 <div id="unsupportedMsg" class="text-danger text-center mt-3" style="display:none;">
                     Unsupported file format. Please download manually.
-                  
+                </div>
 
+                <div class="text-center mt-3">
+                    <a id="downloadBtn" href="#" target="_blank" class="btn btn-sm btn-primary" style="display:none;">
+                        Download File
+                    </a>
                 </div>
-                <div class="text-center mt-2">
-                    <a id="downloadBtn" href="#" target="_blank" class="btn btn-sm btn-primary" style="display:none;">Download File</a>
-                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="groupRejectReasonModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Reject Group Reason</h5>
+            </div>
+
+            <div class="modal-body">
+                <textarea id="groupRejectReason" class="form-control" rows="3"
+                          placeholder="Enter group rejection reason"></textarea>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-danger" onclick="submitGroupReject()">Reject All</button>
             </div>
 
         </div>
@@ -131,7 +245,59 @@
 </div>
 
 
+
+
+
 <style>
+    /*table list css*/
+    #groupsTable thead th {
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    #groupsTable tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    #groupsTable td,
+    #groupsTable th {
+        padding: 0.75rem 0.75rem;
+        vertical-align: middle;
+    }
+
+    #groupsTable {
+        font-size: 0.9rem;
+    }
+
+    /* Responsive file viewer modal */
+    #fileViewerModal .modal-dialog {
+        max-width: 95vw;
+    }
+
+    #fileViewerModal .modal-body {
+        overflow-y: auto;
+        max-height: 85vh;
+    }
+
+    /* Make iframe and excel tables responsive */
+    #fileViewerFrame {
+        width: 100%;
+        height: 75vh;
+    }
+
+    #excelContainer table {
+        width: 100% !important;
+        border-collapse: collapse;
+    }
+
+    /* Image responsiveness */
+    #imageViewer {
+        max-width: 100%;
+        max-height: 80vh;
+        object-fit: contain;
+    }
+
 
     /* Overlay with blur */
     .loading-overlay {
@@ -157,16 +323,13 @@
 
     /* Floating animation */
     @@keyframes floaty {
-        0%, 100%
+        0%, 100% {
+            transform: translateY(0px);
+        }
 
-    {
-        transform: translateY(0px);
-    }
-
-    50% {
-        transform: translateY(-6px);
-    }
-
+        50% {
+            transform: translateY(-6px);
+        }
     }
 
     /* Icon */
@@ -184,387 +347,1479 @@
         font-family: "Inter", sans-serif;
     }
 
+    .check-info-row td {
+        background-color: #f8f9fa;
+        animation: fadeIn 0.3s ease-in-out;
+    }
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-5px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+</style>
+<style>
+    @@media print {
+        body * {
+            visibility: hidden;
+        }
+
+        #printArea, #printArea * {
+            visibility: visible;
+        }
+
+        #printArea {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+
+        button, .btn, .modal-footer {
+            display: none !important;
+        }
+    }
+
+
+
+    /* Hide on screen but still printable */
+    .print-area {
+        position: absolute;
+        left: -9999px; /* move out of screen */
+    }
+    /*hightlihgt back color of group details heading */
+    .emp,
+    .site,
+    .project {
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        display: inline-block;
+        line-height: 1.4;
+        border: 1px solid transparent;
+    }
+
+    /* Employee */
+    .emp {
+        background: linear-gradient(135deg, #e7f1ff, #f4f8ff);
+        color: #084298;
+        border-color: #cfe2ff;
+    }
+
+    /* Site */
+    .site {
+        background: linear-gradient(135deg, #e9f9f0, #f6fffa);
+        color: #0f5132;
+        border-color: #d1e7dd;
+    }
+
+    /* Project */
+    .project {
+        background: linear-gradient(135deg, #fff1e6, #fff8f2);
+        color: #7a3e00;
+        border-color: #ffe5d0;
+    }
+
+    /*changes in the stypling of table which show in the details table render talbe */
+    /* Base row hover */
+    #groupsTable tbody tr {
+        transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+        #groupsTable tbody tr:hover {
+            background-color: #f8f9fa;
+            box-shadow: inset 4px 0 0 #0d6efd;
+            cursor: pointer;
+        }
+
+    /* STATUS COLORS */
+    .row-pending-posting {
+        background-color: #eef5ff;
+        border-left: 5px solid #0d6efd;
+    }
+
+    .row-pending-irb {
+        background-color: #fff4e5;
+        border-left: 5px solid #fd7e14;
+    }
+
+    .row-pending-hr {
+        background-color: #f3f8ff;
+        border-left: 5px solid #0dcaf0;
+    }
+
+    .row-pending-admin {
+        background-color: #f0fdf4;
+        border-left: 5px solid #20c997;
+    }
+
+    .row-pending-accounts {
+        background-color: #fff1f2;
+        border-left: 5px solid #dc3545;
+    }
+
+    /* APPROVED */
+    .row-approved {
+        background-color: #eafaf1;
+        border-left: 6px solid #198754;
+        font-weight: 600;
+    }
+
+    /* REJECTED (if needed) */
+    .row-rejected {
+        background-color: #fdecea;
+        border-left: 6px solid #dc3545;
+    }
+
+    .status-badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        white-space: nowrap; /* ✅ NO LINE BREAK */
+    }
+
+    .status-approved {
+        background: #198754;
+        color: #fff;
+    }
+
+    .status-pending {
+        background: #ffc107;
+        color: #000;
+    }
+    /* Apply styling for date which show below the pending  */
+    .bg-orange {
+        background-color: #ffe0b2; /* soft professional orange */
+    }
+
+    .bg-light-0 {
+        background-color: transparent;
+        color:black;
+    }
+
+    .bg-light-warning {
+        background-color: #fff8e1; /* very soft yellow */
+        color: #6c5700;
+    }
+
+    .bg-light-orange {
+        background-color: #ffedd5; /* soft peach */
+        color: #7a3e00;
+    }
+
+    .bg-light-danger {
+        background-color: #fdecea; /* soft red */
+        color: #7f1d1d;
+    }
+
 </style>
 @section Scripts {
-    <script src="~/lib/axios/dist/axios.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
 
     <script>
-        const type = "@type";
-        const empid = "@empidClaim";
-        const designation = "@designationClaim".toUpperCase();
-        const irb = "@irbClaim";
-        const status1="";
+                const type = "@type";
+                const empid = "@empidClaim";
+                const designation = "@designationClaim".toUpperCase();
+                const irb = "@irbClaim";
+                var status5="";
+                    let bilEmpName="";
+                     var siteName="";
+                     var pirb="";
+                     var pstatus="";
+                     var pexpenseId="";
 
-        // Track row state
-        let rowState = {};
-        let currentEmpID, currentSubmissionDate, currentProjectCode, ExpenseBillId1;
-        let allData = []; // Store all loaded data for filtering
+                // Track row state
+                let rowState = {};
+                let currentEmpID, currentSubmissionDate, currentProjectCode, ExpenseBillId1;
+                let allData = []; // Store al loaded data for filtering
 
-        function canAct(irbFromApi) {
-            return designation === "HR" || designation === "AGM" || designation === "ACCOUNTS" || empid === irbFromApi;
-        }
-
-               function renderStatus(status, rejection) {
-            // Ensure status is compared as string
-            status = String(status ?? '');
-
-            // Handle rejections by each level
-            if (rejection === 'reject') {
-                switch (status) {
-                    case '0': return 'Rejected by IRB';
-                    case '1': return 'Rejected by HR';
-                    case '2': return 'Rejected by AGM';
-                    case '3': return 'Rejected by Accounts';
-                    default:  return 'Rejected';
-                }
-            }
-
-            // Handle normal statuses
-            switch (status) {
-                case '0': return 'Pending at IRB';
-                case '1': return 'Pending at HR';
-                case '2': return 'Pending at AGM';
-                case '3': return 'Pending at Accounts';
-                case '4': return 'Accepted';
-                default:  return status || '';
-            }
-        }
+                        //print bill
 
 
-                function showLoader() {
-          document.getElementById("loadingOverlay").style.display = "flex";
-        }
-        function hideLoader() {
-          document.getElementById("loadingOverlay").style.display = "none";
-        }
-                async function loadGroups() {
-                    showLoader();
-
-            try {
-                const emp = empid;
-                const res = await axios.get(`/api/dashboard/details?empid=${emp}&designation=${designation}&type=${type}`);
-                allData = res.data;
-                renderTable(allData);
-            } catch (err) {
-                console.error("Error loading groups:", err);
-                alert("Failed to load data");
-            } finally {
-                      hideLoader();
-            }
-        }
-             
-
-
-        function renderTable(data) {
-            const tbody = document.querySelector('#groupsTable tbody');
-            tbody.innerHTML = '';
-
-            data.forEach(g => {
-                const tr = document.createElement('tr');
-                tr.style.cursor = "pointer";
-
-                tr.onclick = () => {
-                    ExpenseBillId1 = g.expenseId;
-                    openGroup(g.empID, g.submissionDate, g.projectCode, g.irb,g.status);
-                };
-
-                tr.innerHTML = `
-                    <td>${g.empID}</td>
-                    <td>${g.empName}</td>
-                    <td>${g.irb ?? ''}</td>
-                    <td>${g.irbName ?? ''}</td>
-                    <td>${g.siteName ?? ''}</td>
-                    <td>${g.projectCode ?? ''}</td>
-                    <td>${g.submissionDate ? new Date(g.submissionDate).toLocaleDateString() : ''}</td>
-                    <td>${g.totalClaimAmount}</td>
-                    <td>${g.totalSanctionedAmount}</td>
-                    <td>${renderStatus(g.status, g.rejection)}</td>
-                    <td class="action-cell text-center"></td>
-                `;
-                tbody.appendChild(tr);
-
-                if (g.status === '0' && g.rejection !== "reject") {
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'btn btn-sm btn-danger';
-                    deleteBtn.textContent = 'Delete';
-                    deleteBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        deleteExpense(g.expenseId);
-                    });
-
-                    const actionCell = tr.querySelector('.action-cell');
-                    actionCell.appendChild(deleteBtn);
-                }
-            });
-        }
-
-   // Filter function
-function applyFilter() {
-    const filterType = document.getElementById('filterType').value;
-    const filterValue = document.getElementById('filterInput').value.toLowerCase();
-
-    const filtered = allData.filter(row => {
-        if (filterType === 'all') {
-            return (
-                row.empID.toLowerCase().includes(filterValue) ||
-                row.empName.toLowerCase().includes(filterValue)
-            );
-        } else if (filterType === 'empid') {
-            return row.empID.toLowerCase().includes(filterValue);
-        } else if (filterType === 'name') {
-            return row.empName.toLowerCase().includes(filterValue);
-        }
-        return true;
-    });
-
-    renderTable(filtered);
-}
-
-// Clear filter function
-function clearFilter() {
-    document.getElementById('filterType').value = 'all';
-    document.getElementById('filterInput').value = '';
-    renderTable(allData);
-}
-
-// Event listeners
-document.getElementById('filterInput').addEventListener('input', applyFilter);
-document.getElementById('filterType').addEventListener('change', applyFilter);
-
-
-        // DELETE, GROUP MODAL, REJECT/SPECIAL functions remain the same
-        async function deleteExpense(expenseId) {
-            if (!confirm("Are you sure you want to delete this expense?")) return;
-
-            try {
-                const res = await axios.delete(`/api/dashboard/delete-expense/${expenseId}`);
-                if (res.status === 200) {
-                    alert(res.data.message || "Expense deleted successfully");
-                    loadGroups();
-                } else {
-                    alert("Failed to delete expense. Please try again.");
-                }
-            } catch (err) {
-                console.error(err);
-                alert("Error occurred while deleting the expense.");
-            }
-        }
-
-        async function openGroup(empId, submissionDate, projectCode, irb,status) {
-                    showLoader();
-            currentEmpID = empId;
-            currentSubmissionDate = submissionDate;
-            currentProjectCode = projectCode;
-
-
-            const d = new Date(submissionDate);
-            const dateStr = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, '0') + "-" + String(d.getDate()).padStart(2, '0');
-
-            const res = await axios.get(`/api/dashboard/groupitems?empid=${empId}&submissionDate=${dateStr}&expenseId=${ExpenseBillId1}&type=${status}${type}`);
-            const items = res.data;
-
-            const tbody = document.querySelector('#itemsTable tbody');
-            tbody.innerHTML = '';
-            rowState = {};
-
-            items.forEach(it => {
-                rowState[it.id] = {
-                    rejected: it.rejection === "reject",
-                    special: false,
-                    newAmount: it.sanctionedAmount ?? 0
-                };
-                const tr = document.createElement('tr');
-                tr.setAttribute('data-id', it.id);
-                if (rowState[it.id].rejected) tr.classList.add("table-danger");
-
-                tr.innerHTML = `
-                    <td>${it.dateOfExpense ? new Date(it.dateOfExpense).toLocaleDateString() : ''}</td>
-                    <td>${it.typeOfExpense ?? ''}</td>
-                    <td>${it.travelLocation ?? ''}</td>
-                    <td>${it.quantity ?? ''}</td>
-                    <td>${it.fellowMembers ?? ''}</td>
-                    <td>${it.claimAmount ?? 0}</td>
-                    <td>${it.billDocument ? '<button class="btn btn-sm btn-outline-primary" onclick="viewBill('+it.id+')">View</button>' : ''}</td>
-                    <td><input type="number" class="form-control form-control-sm" value="${rowState[it.id].newAmount}" onchange="updateSanctioned(${it.id}, this.value)" /></td>
-                    <td>${canAct(irb) && (it.sanctionedAmount ?? 0) < (it.claimAmount ?? 0) ? `<button class="btn btn-sm btn-warning" onclick="toggleSpecial(${it.id}, ${it.claimAmount})">Special Approve</button>` : ''}</td>
-                            <td>${canAct(irb)?`<button class="btn btn-sm ${rowState[it.id].rejected ? 'btn-success' : 'btn-danger'}" onclick="toggleReject(${it.id}, this)">${rowState[it.id].rejected ? 'Accept' : 'Reject'}</button>`:''}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-
-            document.getElementById('groupTitle').innerText = `EMPID : ${empId}| PROJECT CODE : ${projectCode}| SUBMISSION DATE: ${new Date(dateStr).toLocaleDateString()}`;
-                           document.getElementById('groupTitle').style.backgroundColor = "lightblue"; // or any color
-
-            const acceptBtn = document.getElementById('acceptGroupBtn');
-            const rejectBtn = document.getElementById('rejectGroupBtn');
-
-            if (canAct(irb)) {
-                if (type === 'rejected') { acceptBtn.style.display = 'inline-block'; rejectBtn.style.display = 'none'; }
-                else if (type === 'approved') { acceptBtn.style.display = 'none'; rejectBtn.style.display = 'none'; }
-                else { acceptBtn.style.display = 'inline-block'; rejectBtn.style.display = 'inline-block'; }
-            } else {
-                acceptBtn.style.display = 'none';
-                rejectBtn.style.display = 'none';
-            }
-            hideLoader();
-            new bootstrap.Modal(document.getElementById('groupModal')).show();
-        }
-                function formatDate(dateString) {
-            const d = new Date(dateString);
-            const day = String(d.getDate()).padStart(2, '0');
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const year = d.getFullYear();
-            return `${day}-${month}-${year}`;
-        }
-
-        function toggleReject(id, btn) {
-            const tr = btn.closest("tr");
-            rowState[id].rejected = !rowState[id].rejected;
-
-            if (rowState[id].rejected) tr.classList.add("table-danger");
-            else tr.classList.remove("table-danger");
-
-            btn.classList.toggle("btn-danger");
-            btn.classList.toggle("btn-success");
-            btn.innerText = rowState[id].rejected ? "Accept" : "Reject";
-        }
-
-        function toggleSpecial(id, claimAmount) {
-            const tr = document.querySelector(`#itemsTable tr[data-id='${id}']`);
-            const sanctionedInput = tr.querySelector("input[type='number']");
-            rowState[id].special = !rowState[id].special;
-
-            if (rowState[id].special) {
-                rowState[id].newAmount = claimAmount;
-                tr.style.backgroundColor = "lightyellow";
-                sanctionedInput.value = claimAmount;
-            } else {
-                rowState[id].newAmount = 0;
-                tr.style.backgroundColor = "";
-                sanctionedInput.value = 0;
-            }
-        }
-
-        function updateSanctioned(id, val) {
-            rowState[id].newAmount = parseFloat(val);
-        }
-
-                    async function viewBill(id) {
+                       async function downloadImagesAsPDF() {
             showLoader();
+
             try {
-                const res = await axios.get(`/api/dashboard/GetBillInfo/${id}`);
-                let { fileUrl, contentType, fileName } = res.data;
+                const { PDFDocument } = PDFLib;
+                const mergedPdf = await PDFDocument.create();
 
-                // Normalize MIME type
-                contentType = (contentType || "").toLowerCase().split(";")[0].trim();
+                const rows = document.querySelectorAll("#itemsTable tbody tr");
 
-                const frame = document.getElementById("fileViewerFrame");
-                const msg = document.getElementById("unsupportedMsg");
-                const excelContainer = document.getElementById("excelContainer");
-                const modalBody = document.querySelector("#fileViewerModal .modal-body");
-                const downloadBtn = document.getElementById("downloadBtn");
+                for (const tr of rows) {
+                    const id = tr.getAttribute("data-id");
+                    if (!id) continue;
 
-                // Reset modal
-                frame.style.display = "none";
-                frame.src = "";
-                excelContainer.style.display = "none";
-                excelContainer.innerHTML = "";
-                msg.style.display = "none";
-                downloadBtn.style.display = "none";
+                    try {
+                        const res = await axios.get(`/api/dashboard/GetBillInfo/${id}`);
+                        let { fileUrl, contentType } = res.data;
 
-                // ✅ Show download button if fileUrl exists
-                if (fileUrl) {
-                    downloadBtn.href = fileUrl;
-                    downloadBtn.download = fileName || "file";
-                    downloadBtn.style.display = "inline-block";
+                        if (!fileUrl) continue;
+
+                        contentType = (contentType || "").toLowerCase();
+
+                        // ✅ If file is PDF → merge it
+                        if (contentType === "application/pdf") {
+
+                            const existingPdfBytes = await fetch(fileUrl).then(res => res.arrayBuffer());
+                            const existingPdf = await PDFDocument.load(existingPdfBytes);
+
+                            const copiedPages = await mergedPdf.copyPages(
+                                existingPdf,
+                                existingPdf.getPageIndices()
+                            );
+
+                            copiedPages.forEach(page => {
+                                mergedPdf.addPage(page);
+                            });
+                        }
+
+                        // ✅ If file is Image → convert to PDF page
+                        else if (contentType.startsWith("image/")) {
+
+                            const imageBytes = await fetch(fileUrl).then(res => res.arrayBuffer());
+
+                            let image;
+                            if (contentType === "image/png") {
+                                image = await mergedPdf.embedPng(imageBytes);
+                            } else {
+                                image = await mergedPdf.embedJpg(imageBytes);
+                            }
+
+                            const page = mergedPdf.addPage();
+                            const { width, height } = page.getSize();
+
+                            page.drawImage(image, {
+                                x: 20,
+                                y: 20,
+                                width: width - 40,
+                                height: height - 40,
+                            });
+                        }
+
+                    } catch (err) {
+                        console.error("File error:", err);
+                    }
                 }
 
-                // File type handling
-                if (contentType.includes("spreadsheet") || contentType.includes("excel") || contentType === "text/csv") {
-                    // Hide iframe, show Excel container
-                    excelContainer.style.display = "block";
+                const pdfBytes = await mergedPdf.save();
 
-                    const blobRes = await axios.get(fileUrl, { responseType: "arraybuffer" });
-                    const data = new Uint8Array(blobRes.data);
-                    const workbook = XLSX.read(data, { type: "array" });
-                    const firstSheet = workbook.SheetNames[0];
-                    const html = XLSX.utils.sheet_to_html(workbook.Sheets[firstSheet]);
+                const blob = new Blob([pdfBytes], { type: "application/pdf" });
+                const url = URL.createObjectURL(blob);
 
-                    excelContainer.innerHTML = html;
-
-                } else if (contentType.startsWith("image/")) {
-                    frame.style.display = "block";
-                    frame.src = fileUrl;
-
-                } else if (contentType === "application/pdf") {
-                    frame.style.display = "block";
-                    frame.src = fileUrl + "#toolbar=1";
-
-                } else {
-                    msg.style.display = "block"; // unsupported format
-                }
-
-                new bootstrap.Modal(document.getElementById("fileViewerModal")).show();
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "Merged_Files.pdf";
+                a.click();
 
             } catch (err) {
-                console.error("Error viewing file:", err);
-                alert("Could not open file for viewing.");
+                console.error("PDF generation error:", err);
             } finally {
                 hideLoader();
             }
         }
 
+                                 //print bill
+                            function printGroupBill() {
+            // Header info
+            document.getElementById("pEmpName").innerText = billEmpName;
+            document.getElementById("pEmpId").innerText = currentEmpID;
+            document.getElementById("pSite").innerText = siteName;
+            document.getElementById("pProject").innerText = currentProjectCode;
+            document.getElementById("pDate").innerText = new Date(currentSubmissionDate).toLocaleDateString();
+            document.getElementById("pIrb").innerText = pirb;
+            document.getElementById("pExpenseId").innerText=pexpenseId;
 
+            const tbody = document.getElementById("printTableBody");
+            tbody.innerHTML = "";
 
+            let totalSanction = 0;
+            const expenseSummary = {}; // To store sum by Expense Type
 
+            // Loop through each row in the items table
+            document.querySelectorAll("#itemsTable tbody tr").forEach(tr => {
+                const tds = tr.querySelectorAll("td");
+                const sanction = Number(tds[7]?.querySelector("input")?.value || 0);
+                totalSanction += sanction;
 
+                // Add to summary by expense type
+                const expenseType = tds[1].innerText.trim();
+                if (expenseSummary[expenseType]) {
+                    expenseSummary[expenseType] += sanction;
+                } else {
+                    expenseSummary[expenseType] = sanction;
+                }
+                        // Check if View button exists (bill document available)
+        const hasBill = tds[6]?.querySelector("button") ? "Bill" : "";
 
-
-        // Accept group
-        document.getElementById('acceptGroupBtn').onclick = async () => {
-            showLoader();
-            const rows = Object.keys(rowState).map(k => ({
-                ItemId: parseInt(k),
-                IsRejected: rowState[k].rejected,
-                IsSpecial: rowState[k].special,
-                NewSanctionedAmount: rowState[k].newAmount
-            }));
-
-            await axios.post('/api/dashboard/accept-group', {
-                EmpID: currentEmpID,
-                SubmissionDate: currentSubmissionDate,
-                ProjectCode: currentProjectCode,
-                ActionBy: empid,
-                ExpenseId: ExpenseBillId1,
-                Designation: designation,
-                Rows: rows
+                // Add row to main print table
+                const row = `
+                    <tr>
+                        <td>${tds[0].innerText}</td>
+                        <td>${tds[1].innerText}</td>
+                        <td>${tds[2].innerText}</td>
+                        <td>${tds[3].innerText}</td>
+                        <td>${tds[4].innerText}</td>
+                            <td>${hasBill}</td>
+                            <td>${tds[5].innerText}</td>
+                        <td>${sanction}</td>
+                    </tr>
+                `;
+                tbody.insertAdjacentHTML("beforeend", row);
             });
 
-            bootstrap.Modal.getInstance(document.getElementById('groupModal')).hide();
-            hideLoader();
-            loadGroups();
-        };
+                 // Make sure siteName is a string
+        const siteNameLower = siteName.toLowerCase(); // convert to lowercase
 
-        // Reject group
-        document.getElementById('rejectGroupBtn').onclick = async () => {
-            showLoader();
-            await axios.post('/api/dashboard/reject-group', {
-                EmpID: currentEmpID,
-                SubmissionDate: currentSubmissionDate,
-                ProjectCode: currentProjectCode,
-                ActionBy: empid,
-                ExpenseId: ExpenseBillId1
+        if (
+            siteNameLower.includes("pioneer") ||
+            siteNameLower.includes("pmal") ||
+            siteNameLower.includes("pma")
+        ) {
+            document.getElementById("pSiteName").innerText = "Expense claim bill";
+        }
+
+            // Handle approval text
+            if (pstatus === "3" || pstatus === "4") {
+                document.getElementById("pApprovel").innerText = "Checked by Kuldeep Kumar -- Approved by Arpana Rao";
+            } else if (pstatus === "2") {
+                document.getElementById("pApprovel").innerText = "Checked by Kuldeep Kumar";
+            } else {
+                document.getElementById("pApprovel").innerText = "Not approved";
+            }
+
+            // Show total sanction
+            document.getElementById("pTotalSanction").innerText = totalSanction;
+
+            // Create summary table
+                  let summaryHTML = `
+            <br>
+            <h4 style="text-align:center;" id="hedingsummary" >Summary by Expense Type</h4>
+            <table id="expenseSummary" border="1" width="100%" cellspacing="0" cellpadding="6">
+                <thead>
+                    <tr>
+                        <th>Expense Type</th>
+                        <th>Total Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+            let grandTotal = 0;
+            for (const type in expenseSummary) {
+                summaryHTML += `<tr><td>${type}</td><td>${expenseSummary[type]}</td></tr>`;
+                grandTotal += expenseSummary[type];
+            }
+            summaryHTML += `
+                <tr>
+                    <th>Total</th>
+                    <th>${grandTotal}</th>
+                </tr>
+                </tbody>
+                </table>
+            `;
+
+            // Append summary after the approval paragraph
+            const approvalSection = document.getElementById("pApprovel");
+                   // Remove old summary if exists
+
+        document.getElementById("expenseSummary")?.remove();
+        document.getElementById("hedingsummary")?.remove();
+
+        // Append new summary after approval paragraph
+        approvalSection.insertAdjacentHTML("afterend", summaryHTML);
+
+            // Print only the print area
+            // const printContents = document.getElementById("printArea").innerHTML;
+            // const originalContents = document.body.innerHTML;
+
+            // document.body.innerHTML = printContents;
+                   window.onafterprint = function () {
+            clearPrintArea();
+        };
+               window.print();
+
+
+
+
+
+         /*    location.reload();    */    // restore events
+        }
+                function clearPrintArea() {
+            document.getElementById("pEmpName").innerText = "";
+            document.getElementById("pEmpId").innerText = "";
+            document.getElementById("pSite").innerText = "";
+            document.getElementById("pProject").innerText = "";
+            document.getElementById("pDate").innerText = "";
+            document.getElementById("pIrb").innerText = "";
+            document.getElementById("pExpenseId").innerText = "";
+            document.getElementById("pTotalSanction").innerText = "";
+            document.getElementById("pApprovel").innerText = "";
+
+            document.getElementById("printTableBody").innerHTML = "";
+
+                  // Remove summary safely
+        document.getElementById("expenseSummary")?.remove();
+           document.getElementById("hedingsummary")?.remove();
+        }
+
+
+
+         //status of the class
+                function getRowStatusClass(status, rejection) {
+            if (rejection === "reject") return "row-rejected";
+
+            switch (String(status)) {
+                case "5": return "row-pending-posting";
+                case "0": return "row-pending-irb";
+                case "1": return "row-pending-hr";
+                case "2": return "row-pending-admin";
+                case "3": return "row-pending-accounts";
+                case "4": return "row-approved";
+                default: return "";
+            }
+        }
+
+        //status trakcer
+                function renderStatusTracker(status, empName = '') {
+            const tracker = document.getElementById('statusTracker');
+            tracker.innerHTML = ''; // clear previous
+
+            const steps = [
+                { id: 5, label: 'Pending Posting' },
+                { id: 0, label: 'Pending at IRB' },
+                { id: 1, label: 'Pending at HR' },
+                { id: 2, label: 'Pending at HR Admin' },
+                { id: 3, label: 'Pending at Accounts' },
+                { id: 4, label: 'Approved' },
+            ];
+
+            steps.forEach((step, index) => {
+                const stepDiv = document.createElement('div');
+                stepDiv.classList.add('status-step');
+
+                // Determine status
+                if (step.id < status) {
+                    stepDiv.classList.add('completed');
+                } else if (step.id === status) {
+                    stepDiv.classList.add('pending');
+                }
+
+                // Special case: show employee name if pending posting
+                let circleContent = '';
+                if (step.id === 5 && status === 5 && empName) {
+                    circleContent = '👤';
+                } else {
+                    circleContent = step.id;
+                }
+
+                stepDiv.innerHTML = `
+                    <div class="circle">${circleContent}</div>
+                    <div class="label">${step.label}</div>
+                `;
+
+                tracker.appendChild(stepDiv);
             });
+        }
+                //irb information
+                function canAct(irbFromApi) {
+                    return designation === "HR" || designation === "AGM" || designation === "ACCOUNTS" || empid === irbFromApi;
+                }
 
-            bootstrap.Modal.getInstance(document.getElementById('groupModal')).hide();
-            hideLoader();
-            loadGroups();
-        };
+                       function renderStatus(status, rejection) {
+                    // Ensure status is compared as string
+                    status = String(status ?? '');
 
-        // Initial load
-        loadGroups();
+                    // Handle rejections by each level
+                    if (rejection === 'reject') {
+                        switch (status) {
+                            case '0': return 'Rejected by IRB';
+                            case '1': return 'Rejected by HR';
+                            case '2': return 'Rejected by HR ADMIN';
+                            case '3': return 'Rejected by Accounts';
+                            default:  return 'Rejected';
+                        }
+                    }
+
+                    // Handle normal statuses
+                    switch (status) {
+                        case '0': return 'Pending at IRB';
+                        case '1': return 'Pending at HR';
+                              case '2': return 'Pending at HR ADMIN';
+                        case '3': return 'Pending at Accounts';
+                        case '4': return 'Accepted';
+                        case '5': return 'Pending at EMP';
+                        default:  return status || '';
+                    }
+                }
+
+                  function renderStatus(status, rejection) {
+            status = String(status ?? '');
+
+                // 🔴 Rejected cases (based on who rejected)
+        if (rejection === 'reject') {
+            switch (status) {
+                case '0':
+                    return `<span class="status-badge bg-danger text-white" title="Rejected by IRB">Rejected – IRB</span>`;
+                case '1':
+                    return `<span class="status-badge bg-danger text-white" title="Rejected by HR">Rejected – HR</span>`;
+                case '2':
+                    return `<span class="status-badge bg-danger text-white" title="Rejected by HR Admin">Rejected – HR Admin</span>`;
+                case '3':
+                    return `<span class="status-badge bg-danger text-white" title="Rejected by Accounts">Rejected – Accounts</span>`;
+                default:
+                    return `<span class="status-badge bg-danger text-white">Rejected</span>`;
+            }
+        }
+
+            switch (status) {
+                case '0': return `<span class="status-badge status-pending">Pending at IRB</span>`;
+                case '1': return `<span class="status-badge status-pending">Pending at HR</span>`;
+                case '2': return `<span class="status-badge status-pending">Pending at HR ADMIN</span>`;
+                case '3': return `<span class="status-badge status-pending">Pending at Accounts</span>`;
+                case '4': return `<span class="status-badge status-approved">Approved</span>`;
+                case '5': return `<span class="status-badge bg-secondary text-white">Pending at EMP</span>`;
+                default:  return status;
+            }
+        }
+
+                        function showLoader() {
+                  document.getElementById("loadingOverlay").style.display = "flex";
+                }
+                function hideLoader() {
+                  document.getElementById("loadingOverlay").style.display = "none";
+                }
+
+                    //on page load the call the load funtion
+                        document.addEventListener("DOMContentLoaded", () => {
+            loadGroups(1);
+        });
+                //loading all the rows of the data
+                                let currentPage = 1;
+        const pageSize = 30;
+
+                async function loadGroups(page = 1) {
+            showLoader();
+            try {
+                const filterValue = document.getElementById('filterInput').value || "";
+
+                const res = await axios.get(
+                    `/api/dashboard/details`,
+                    {
+                        params: {
+                            empid,
+                            designation,
+                            type,
+                            page,
+                            pageSize,
+                            search: filterValue
+                        }
+                    }
+                );
+
+                allData = res.data.data;
+                renderTable(allData);
+                renderPagination(res.data.totalCount);
+
+            } catch (err) {
+                showError("Failed to load data");
+            } finally {
+                hideLoader();
+            }
+        }
+
+        //for pagination
+                   function renderPagination(totalCount) {
+            const totalPages = Math.ceil(totalCount / pageSize);
+            const container = document.getElementById("pagination");
+            container.innerHTML = "";
+
+            const maxVisiblePages = 5; // Number of page buttons to show at once
+            let startPage = Math.max(currentPage - Math.floor(maxVisiblePages / 2), 1);
+            let endPage = startPage + maxVisiblePages - 1;
+
+            if (endPage > totalPages) {
+                endPage = totalPages;
+                startPage = Math.max(endPage - maxVisiblePages + 1, 1);
+            }
+
+            // Previous button
+            const prevBtn = document.createElement("button");
+            prevBtn.textContent = "« Prev";
+            prevBtn.className = "btn btn-sm btn-outline-primary me-1";
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => {
+                currentPage--;
+                loadGroups(currentPage);
+            };
+            container.appendChild(prevBtn);
+
+            // Page numbers
+            for (let i = startPage; i <= endPage; i++) {
+                const btn = document.createElement("button");
+                btn.textContent = i;
+                btn.className = `btn btn-sm me-1 ${i === currentPage ? "btn-primary" : "btn-outline-primary"}`;
+                btn.onclick = () => {
+                    currentPage = i;
+                    loadGroups(i);
+                };
+                container.appendChild(btn);
+            }
+
+            // Next button
+            const nextBtn = document.createElement("button");
+            nextBtn.textContent = "Next »";
+            nextBtn.className = "btn btn-sm btn-outline-primary";
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = () => {
+                currentPage++;
+                loadGroups(currentPage);
+            };
+            container.appendChild(nextBtn);
+        }
+
+
+        //for calling the line in the code
+
+        //                        document.querySelector("#groupsTable tbody").addEventListener("click", e => {
+        //     const tr = e.target.closest("tr");
+        //     if (!tr) return;
+
+        //     const expenseId = tr.dataset.expenseId;
+        //     const empId = tr.dataset.empId;
+
+        //     openGroup(empId, tr.dataset.submissionDate, tr.dataset.projectCode, tr.dataset.irb, tr.dataset.status);
+        // });
+        //this is the main row of gorupdetails
+
+                function renderTable(data) {
+                    const tbody = document.querySelector('#groupsTable tbody');
+                    tbody.innerHTML = '';
+
+                    data.forEach(g => {
+                        const tr = document.createElement('tr');
+                        tr.style.cursor = "pointer";
+                         tr.title = "Click to open bill details";
+                          // Determine approved date based on status
+                let approvedTime = '';
+                if (g.status === "1") {
+                    approvedTime = g.irbApprovedDate;
+                } else if (g.status === "2") {
+                    approvedTime = g.hrApprovelDate;
+                } else if (g.status === "3") {
+                    approvedTime = g.agmApprovelDate;
+                } else if (g.status === "4") {
+                    approvedTime = g.accountApprovelDate;
+                }
+
+                 // Format date + time + days
+        let approvedDateText = '';
+
+        if (approvedTime) {
+            const approvedDate = new Date(approvedTime);
+            const today = new Date();
+
+            // Calculate difference in days
+            const approvedDay = new Date(approvedDate);
+            const todayDay = new Date(today);
+            approvedDay.setHours(0, 0, 0, 0);
+            todayDay.setHours(0, 0, 0, 0);
+
+            const diffDays = Math.floor((todayDay - approvedDay) / (1000 * 60 * 60 * 24));
+
+            let bgClass = '';
+            let dayText = '';
+
+            if (g.status === "4") {
+                // Always approved for status 4
+                bgClass = 'bg-light-0';
+                dayText = diffDays === 0 ? 'Approved today' : `Approved ${diffDays} day(s) ago`;
+            } else {
+                // Other statuses
+                if (diffDays === 0) {
+                    bgClass = 'bg-light-0';
+                    dayText = 'Pending today';
+                } else if (diffDays <= 3) {
+                    bgClass = 'bg-light-warning';
+                    dayText = `Pending ${diffDays} day(s) ago`;
+                } else if (diffDays <= 7) {
+                    bgClass = 'bg-light-orange';
+                    dayText = `Pending for ${diffDays} day(s)`;
+                } else {
+                    bgClass = 'bg-light-danger';
+                    dayText = `Delayed: ${diffDays} day(s)`;
+                }
+            }
+
+            // Build HTML with professional layout
+            approvedDateText = `
+                <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
+                    <small
+                        class="badge ${bgClass}"
+                        style="
+                            font-size: 0.9rem;
+                            padding: 6px 10px;
+                            font-weight: 500;
+                        "
+                    >
+                        ${approvedDate.toLocaleDateString()} ${approvedDate.toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                        })}
+                    </small>
+                    <small style="font-size: 0.8rem; color: #555;">
+                        ${dayText}
+                    </small>
+                </div>
+            `;
+        }
+
+
+
+
+                          tr.onclick = () => {
+                            ExpenseBillId1 = g.expenseId;
+                            openGroup(g.empID, g.submissionDate, g.projectCode, g.irb,g.status);
+                              billEmpName=g.empName;
+                             pirb=g.irbName;
+                             pstatus=g.status;
+                              pexpenseId=g.expenseId;
+                        };
+
+
+                        tr.innerHTML = `
+                            <td>${g.expenseId}</td>
+                            <td>${g.empID}</td>
+                            <td>${g.empName}</td>
+
+                                   <td>
+          <div style="font-weight:600;">${g.irbName ?? ''}</div>
+          <div style="font-size:12px; color:#6c757d;">
+            ${g.irbApprovedDate ? new Date(g.irbApprovedDate).toLocaleDateString() : ''}
+          </div>
+        </td>
+
+        <td>
+          <div style="font-weight:600;">${g.projectCode ?? ''}</div>
+          <div style="font-size:12px; color:#6c757d;">
+            HR: ${g.hrApprovelDate ? new Date(g.hrApprovelDate).toLocaleDateString() : ''}
+          </div>
+        </td>
+
+        <td style="text-align:center;">
+          ${g.submissionDate ? new Date(g.submissionDate).toLocaleDateString() : ''}
+        </td>
+
+        <td style="text-align:right; font-weight:600;">
+          ${g.totalClaimAmount ? g.totalClaimAmount.toLocaleString() : '0'}
+        </td>
+
+        <td style="text-align:right;">
+          <div style="font-weight:600; color:#198754;">
+            ${g.totalSanctionedAmount ? g.totalSanctionedAmount.toLocaleString() : '0'}
+          </div>
+          ${g.agmApprovelDate ? `
+            <div style="font-size:12px; color:#6c757d;">
+              HR-ADMIN: ${new Date(g.agmApprovelDate).toLocaleDateString()}
+            </div>
+          ` : ''}
+        </td>
+                             <td>
+                        ${renderStatus(g.status, g.rejection)}
+                        ${approvedDateText}
+                    </td>
+                            <td class="action-cell text-center"></td>
+                        `;
+                        tbody.appendChild(tr);
+
+                         const rowClass = getRowStatusClass(g.status, g.rejection);
+        if (rowClass) {
+            tr.classList.add(rowClass);
+        }
+
+                                    if ((g.status === '0'||g.status==='5') && g.rejection !== "reject"&& g.empID===empid) {
+                    const actionCell = tr.querySelector('.action-cell');
+
+                    // Delete Button
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'btn btn-sm btn-danger me-1';
+                    deleteBtn.textContent = 'Delete';
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteExpense(g.expenseId);
+                    });
+                    actionCell.appendChild(deleteBtn);
+
+                    // // Edit Button
+                    // const editBtn = document.createElement('button');
+                    // editBtn.className = 'btn btn-sm btn-primary';
+                    // editBtn.textContent = 'Edit';
+                    // editBtn.addEventListener('click', (e) => {
+                    //     e.stopPropagation();
+                    //     openGroupForEdit(g.empID, g.submissionDate, g.projectCode, g.irb, g.expenseId);
+                    // });
+                    // actionCell.appendChild(editBtn);
+                }
+
+
+                    });
+                }
+                //change button click funtion
+
+
+        function openGroupForEdit(empId, submissionDate, projectCode, irb, expenseId) {
+            // Convert date to proper format for query string (yyyy-MM-dd)
+            const d = new Date(submissionDate);
+            const dateStr = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, '0') + "-" + String(d.getDate()).padStart(2, '0');
+
+            // Redirect to new view page (GroupEdit)
+            window.location.href = `/ExpenseEdit/GroupEdit?empId=${empId}&submissionDate=${dateStr}&projectCode=${projectCode}&expenseId=${expenseId}`;
+        }
+
+
+
+           // Filter function
+          // Filter function
+        // function applyFilter() {
+        //     const filterType = document.getElementById('filterType').value;
+        //     const filterValue = document.getElementById('filterInput').value.toLowerCase();
+
+        //     // const filtered = allData.filter(row => {
+        //     //     if (filterType === 'all') {
+        //     //         return (
+        //     //             row.empID.toLowerCase().includes(filterValue) ||
+        //     //             row.empName.toLowerCase().includes(filterValue)
+        //     //         );
+        //     //     } else if (filterType === 'empid') {
+        //     //         return row.empID.toLowerCase().includes(filterValue);
+        //     //     } else if (filterType === 'name') {
+        //     //         return row.empName.toLowerCase().includes(filterValue);
+        //     //     }
+        //     //     return true;
+        //     // });
+
+        // var filtered = allData.filter(
+        //   (order) =>
+        //     order.empID?.toString().toLowerCase().includes(filterValue?.toLowerCase()) ||
+        //     order.empName?.toString().toLowerCase().includes(filterValue?.toLowerCase()) ||
+        //     order.irb?.toString().toLowerCase().includes(filterValue?.toLowerCase()) ||
+        //     order.siteName?.toString().toLowerCase().includes(filterValue?.toString().toLowerCase()) ||
+        //     order.projectCode?.toString().toLowerCase().includes(filterValue?.toString().toLowerCase()) ||
+        //     order.irbName?.toString().toLowerCase().includes(filterValue?.toString().toLowerCase()) ||
+        //     order.submissionDate?.toString().toLowerCase().includes(filterValue?.toString().toLowerCase()) ||
+        //     order.expenseId?.toString().toLowerCase().includes(filterValue?.toString().toLowerCase())||
+        //      order.totalClaimAmount?.toString().toLowerCase().includes(filterValue?.toString().toLowerCase())||
+        //      order.totalSanctionedAmount?.toString().toLowerCase().includes(filterValue?.toString().toLowerCase())
+        // );
+
+        //     renderTable(filtered);
+        // }
+
+        // Clear filter function
+         // Clear filter function
+               function clearFilter() {
+            document.getElementById('filterInput').value = '';
+            loadGroups(1);
+        }
+
+
+        // Event listeners
+               let searchTimer;
+
+        document.getElementById('filterInput').addEventListener('keyup', () => {
+            clearTimeout(searchTimer);
+
+            searchTimer = setTimeout(() => {
+                loadGroups(1); // ⬅️ API call
+            }, 400); // debounce (important)
+        });
+
+        // document.getElementById('filterType').addEventListener('change', applyFilter);
+
+
+                // DELETE, GROUP MODAL, REJECT/SPECIAL functions remain the same
+                async function deleteExpense(expenseId) {
+                            const result = await showConfirm("Are you sure you want to delete this expense?");
+                    if (!result.isConfirmed) return;
+
+                    try {
+                        const res = await axios.delete(`/api/dashboard/delete-expense/${expenseId}`);
+                        if (res.status === 200) {
+                                   showSuccess(res.data.message || "Expense deleted successfully");
+                            loadGroups();
+                        } else {
+                                      showError("Failed to delete expense. Please try again.");
+                        }
+                    } catch (err) {
+                        console.error(err);
+                                showError("Error occurred while deleting the expense.");
+                    }
+                }
+
+                //group data show in this funtion
+
+                async function openGroup(empId, submissionDate, projectCode, irb,status) {
+                            showLoader();
+                    currentEmpID = empId;
+                    currentSubmissionDate = submissionDate;
+                    currentProjectCode = projectCode;
+
+
+
+                    const d = new Date(submissionDate);
+                    const dateStr = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, '0') + "-" + String(d.getDate()).padStart(2, '0');
+
+                    const res = await axios.get(`/api/dashboard/groupitems?empid=${empId}&submissionDate=${dateStr}&expenseId=${ExpenseBillId1}&type=${status}${type}`);
+                    const items = res.data;
+
+                    const tbody = document.querySelector('#itemsTable tbody');
+                    tbody.innerHTML = '';
+                    rowState = {};
+
+                                   for (const it of items) {
+                                       status5=it.status;
+                                       siteName=it.siteName;
+                    rowState[it.id] = {
+                        rejected: it.rejection === "reject",
+                        special: false,
+                        newAmount: it.sanctionedAmount ?? 0
+
+                               /*    Reason: rowState[k].rejected ? (rowState[k].reason || "") : ""   */ // <-- MUST have comma above, NOT after this line
+                    };
+
+                    const tr = document.createElement('tr');
+                    tr.setAttribute('data-id', it.id);
+                    if (rowState[it.id].rejected) tr.classList.add("table-danger");
+
+                    // Determine role permissions
+                    const isHR = designation === "HR";
+                    const isAGM = designation === "AGM";
+                    const isAccounts = designation === "ACCOUNTS";
+                    const isIRB = empid === irb;
+
+                    const canClickSpecial = isHR || isAGM;
+                    const canSeeSpecial = canClickSpecial || isAccounts || isIRB;
+                    const isEditable = canClickSpecial;
+                                const canEdit =  (empId===empid)&&(it.status === "0"||it.status==="5" || it.rejection === "reject");
+
+                        let editBtnHTML = "";
+                        if (canEdit) {
+                                           if (it.rejection === "reject" && it.reason && it.reason.trim() !== "") {
+                    const reasonText = it.reason; // it's already not null/empty
+                    editBtnHTML = `
+                        <button class="btn btn-sm btn-primary" onclick="editSingle(${it.id})">Edit</button>
+                        <div class="form-control form-control-sm mt-1 reason-box"> ${reasonText}</div>
+                    `;
+                }else{
+                                        editBtnHTML = `
+                                        <button class="btn btn-sm btn-primary"
+                                            onclick="editSingle(${it.id})">
+                                            Edit
+                                        </button>`;
+                            }
+
+                        }
+
+                    let specialBtnHTML = "";
+                    if (canSeeSpecial && (it.sanctionedAmount ?? 0) < (it.claimAmount ?? 0)) {
+                        if (canClickSpecial) {
+                            specialBtnHTML = `<button class="btn btn-sm btn-warning" onclick="toggleSpecial(${it.id}, ${it.claimAmount})">Special Approve</button>`;
+                        } else {
+                            specialBtnHTML = `<button class="btn btn-sm btn-secondary" disabled>Special Approve</button>`;
+                        }
+                    }
+
+                    const checkBtnId = `check-btn-${it.id}`; // unique ID for each check button
+
+                    const sanctionedInputHTML = `<input type="number" class="form-control form-control-sm" value="${rowState[it.id].newAmount}"
+                        onchange="updateSanctioned(${it.id}, this.value)" ${!isEditable ? "readonly" : ""} />`;
+
+                    tr.innerHTML = `
+                        <td>${it.dateOfExpense ? formatDate(it.dateOfExpense) : ''}</td>
+                        <td>${it.typeOfExpense ?? ''}</td>
+                        <td>${it.travelLocation ?? ''}</td>
+                        <td>${it.quantity ?? ''}</td>
+                        <td>${it.fellowMembers ?? ''}</td>
+                        <td>${it.claimAmount ?? 0}</td>
+                        <td>${it.billDocument ? '<button class="btn btn-sm btn-outline-primary" onclick="viewBill('+it.id+')">View</button>' : ''}</td>
+                        <td>${sanctionedInputHTML}</td>
+                        <td>${specialBtnHTML}</td>
+                                <td class="text-center">
+                    <div class="d-flex flex-column align-items-center gap-1">
+
+                        <!-- Existing Reject/Accept + Check -->
+                        ${
+                            canAct(irb)
+                            ? `
+                                <button class="btn btn-sm ${rowState[it.id].rejected ? 'btn-success' : 'btn-danger'}"
+                                    onclick="toggleReject(${it.id}, this)">
+                                    ${rowState[it.id].rejected ? 'Accept' : 'Reject'}
+                                </button>
+                                        <!-- ⭐ NEW TEXTBOX for reject reason -->
+                <div id="reason-box-${it.id}" class="mt-1" style="display:none; width:100%;">
+                    <input class="form-control form-control-sm"
+                        placeholder="Enter rejection comment"
+                        oninput="rowState[${it.id}].reason = this.value">
+                </div>
+                                <button class="btn btn-sm btn-outline-info" id="${checkBtnId}"
+                                    onclick="checkSimilar('${it.empID}', '${it.typeOfExpense}', '${it.dateOfExpense}', this)">
+                                    Check
+                                </button>
+                            `
+                            : ""
+                        }
+
+                        <!-- NEW EDIT BUTTON -->
+                        ${editBtnHTML}
+
+                    </div>
+                </td>
+
+                    `;
+
+                    tbody.appendChild(tr);
+                            updateTotals();
+
+
+                    // ✅ Call check-similar API for this row and conditionally hide the button
+                    try {
+                                                const res = await axios.get(`/api/dashboard/check-similarHide?empId=${currentEmpID}&typeOfExpense=${encodeURIComponent(it.typeOfExpense)}&dateOfExpense=${it.dateOfExpense}&billID=${ExpenseBillId1}`);
+                        const matches = res.data;
+
+                        if (!matches || matches.length === 0) {
+                            const btn = document.getElementById(checkBtnId);
+                            if (btn) btn.style.display = "none"; // ✅ hide the button for this row only
+                        }
+                    } catch (err) {
+                        console.error("Error checking similar expenses for row", it.id, err);
+                    }
+                }
+
+
+
+
+                             document.getElementById('groupTitle').innerHTML = `
+            EMPID : ${empId} |
+            EMPNAME : <span class="emp">${billEmpName}</span> |
+            SITE NAME : <span class="site">${siteName}</span> |
+            PROJECT CODE : <span class="project">${projectCode}</span> |
+            SUBMISSION DATE : ${formatDate(dateStr)}
+        `;
+                                  /*  document.getElementById('groupTitle').style.backgroundColor = "lightblue"; */ // or any color
+
+                    const acceptBtn = document.getElementById('acceptGroupBtn');
+                    const rejectBtn = document.getElementById('rejectGroupBtn');
+
+                    if (canAct(irb)) {
+                        if (type === 'rejected') { acceptBtn.style.display = 'inline-block'; rejectBtn.style.display = 'none'; }
+                        else if (type === 'approved') { acceptBtn.style.display = 'none'; rejectBtn.style.display = 'none'; }
+                        else { acceptBtn.style.display = 'inline-block'; rejectBtn.style.display = 'inline-block'; }
+                    } else {
+                        if(status5==="5"||type==='rejected'){
+                                    acceptBtn.style.display = 'inline-block';
+                                             rejectBtn.style.display = 'none';
+                        }
+                        else{
+                                    acceptBtn.style.display = 'none';
+                                       rejectBtn.style.display = 'none';
+                        }
+
+                    }
+                    hideLoader();
+                    new bootstrap.Modal(document.getElementById('groupModal')).show();
+                }
+                //edit fuction call from that function
+                        function editSingle(id) {
+                    window.location.href = `/ExpenseEdit/EditSingle?id=${id}`;
+                }
+
+
+                //for updating the totals
+                        function updateTotals() {
+                    let totalClaim = 0;
+                    let totalSanctioned = 0;
+
+                    const rows = document.querySelectorAll('#itemsTable tbody tr');
+                    rows.forEach(row => {
+                        const claim = parseFloat(row.children[5]?.textContent) || 0;
+                        const sanctionedInput = row.querySelector('input[type="number"]');
+                        const sanctioned = sanctionedInput ? parseFloat(sanctionedInput.value) || 0 : 0;
+                        totalClaim += claim;
+                        totalSanctioned += sanctioned;
+                    });
+
+                    document.getElementById('totalClaim').innerText = totalClaim.toFixed(2);
+                    document.getElementById('totalSanctioned').innerText = totalSanctioned.toFixed(2);
+                }
+
+
+                //checking the similar data in the database
+
+                        async function checkSimilar(empId, typeOfExpense, dateOfExpense, btn) {
+                    const tr = btn.closest("tr");
+                    const existingDiv = tr.nextElementSibling;
+                    ExpenseBillId1;
+
+                    // If already open → close it
+                    if (existingDiv && existingDiv.classList.contains("check-info-row")) {
+                        existingDiv.remove();
+                        return;
+                    }
+
+                    showLoader();
+                    try {
+                        const dateObj = new Date(dateOfExpense);
+                        const formattedDate = dateObj.getFullYear() + "-" +
+                                              String(dateObj.getMonth() + 1).padStart(2, '0') + "-" +
+                                              String(dateObj.getDate()).padStart(2, '0');
+
+                        const res = await axios.get(`/api/dashboard/check-similar?empId=${currentEmpID}&typeOfExpense=${encodeURIComponent(typeOfExpense)}&dateOfExpense=${formattedDate}&expensebill=${ExpenseBillId1}`);
+                        const matches = res.data;
+
+                        // Remove previous check divs
+                        document.querySelectorAll(".check-info-row").forEach(el => el.remove());
+
+                        if (!matches || matches.length === 0) {
+                            const noDataRow = document.createElement("tr");
+                            noDataRow.classList.add("check-info-row");
+                            noDataRow.innerHTML = `<td colspan="10" class="text-center text-danger fw-bold bg-light">No matching data found.</td>`;
+                            tr.after(noDataRow);
+                        } else {
+                            // Build info table
+                            let innerHTML = `
+                                <div class="p-3 bg-light border rounded">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="mb-0 text-primary fw-bold">Similar Expense Entries</h6>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()">Close</button>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered mb-0">
+                                            <thead class="table-secondary">
+                                                <tr>
+                                                    <th>TypeOfExpense</th>
+                                                    <th>EmpID</th>
+                                                    <th>FellowMembers</th>
+                                                    <th>TravelLocation</th>
+                                                    <th>SiteName</th>
+                                                    <th>ProjectCode</th>
+                                                    <th>Claim Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${matches.map(m => `
+                                                    <tr>
+                                                        <td>${m.typeOfExpense}</td>
+                                                        <td>${m.empID}</td>
+                                                        <td>${m.fellowMembers ?? ''}</td>
+                                                        <td>${m.travelLocation ?? ''}</td>
+                                                        <td>${m.siteName ?? ''}</td>
+                                                        <td>${m.projectCode ?? ''}</td>
+                                                         <td>${m.claimAmount ?? 0}</td>
+                                                    </tr>
+                                                `).join('')}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            `;
+
+                            const infoRow = document.createElement("tr");
+                            infoRow.classList.add("check-info-row");
+                            infoRow.innerHTML = `<td colspan="10">${innerHTML}</td>`;
+                            tr.after(infoRow);
+                        }
+
+                    } catch (err) {
+                        console.error("Error checking similar expenses:", err);
+                        // alert("Failed to check similar data.");
+                                showError("Failed to check similar data.");
+                    } finally {
+                        hideLoader();
+                    }
+                }
+
+                        function formatDate(dateString) {
+                    const d = new Date(dateString);
+                    const day = String(d.getDate()).padStart(2, '0');
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const year = d.getFullYear();
+                    return `${day}-${month}-${year}`;
+                }
+
+                               function toggleReject(id, btn) {
+                    const tr = btn.closest("tr");                // Get the table row
+                    const box = document.getElementById(`reason-box-${id}`); // Get the reason textarea
+
+                    // Toggle the rejected state
+                    rowState[id].rejected = !rowState[id].rejected;
+
+                    // Toggle row highlight
+                    if (rowState[id].rejected) {
+                        tr.classList.add("table-danger");
+                    } else {
+                        tr.classList.remove("table-danger");
+                        rowState[id].reason = ""; // clear reason when un-rejected
+                    }
+
+                    // Toggle button classes and text
+                    btn.classList.toggle("btn-danger");
+                    btn.classList.toggle("btn-success");
+                    btn.innerText = rowState[id].rejected ? "Accept" : "Reject";
+
+                    // Show/hide the reason textarea
+                    if (box) box.style.display = rowState[id].rejected ? "block" : "none";
+                }
+
+
+
+                function toggleSpecial(id, claimAmount) {
+                    const tr = document.querySelector(`#itemsTable tr[data-id='${id}']`);
+                    const sanctionedInput = tr.querySelector("input[type='number']");
+                    rowState[id].special = !rowState[id].special;
+
+                    if (rowState[id].special) {
+                        rowState[id].newAmount = claimAmount;
+                        tr.style.backgroundColor = "lightyellow";
+                        sanctionedInput.value = claimAmount;
+                    } else {
+                        rowState[id].newAmount = 0;
+                        tr.style.backgroundColor = "";
+                        sanctionedInput.value = 0;
+                    }
+                              updateTotals();
+                }
+
+                function updateSanctioned(id, val) {
+                    rowState[id].newAmount = parseFloat(val);
+
+                              // ✅ Recalculate totals live
+                    updateTotals();
+                }
+
+                         async function viewBill(id) {
+                    showLoader();
+                    try {
+                        const res = await axios.get(`/api/dashboard/GetBillInfo/${id}`);
+                        let { fileUrl, contentType, fileName } = res.data;
+
+                        contentType = (contentType || "").toLowerCase().split(";")[0].trim();
+
+                        const frame = document.getElementById("fileViewerFrame");
+                        const excelContainer = document.getElementById("excelContainer");
+                        const msg = document.getElementById("unsupportedMsg");
+                        const downloadBtn = document.getElementById("downloadBtn");
+
+                        // Reset modal content
+                        frame.style.display = "none";
+                        frame.src = "";
+                        excelContainer.style.display = "none";
+                        excelContainer.innerHTML = "";
+                                // ✅ Reset image container and viewer
+                const imageContainer = document.getElementById("imageContainer");
+                const imageViewer = document.getElementById("imageViewer");
+                              imageContainer.style.display = "none";
+                        imageViewer.src = "";
+                        msg.style.display = "none";
+                        downloadBtn.style.display = "none";
+
+                        // Always enable download if URL exists
+                        if (fileUrl) {
+                            downloadBtn.href = fileUrl;
+                            downloadBtn.download = fileName || "file";
+                            downloadBtn.style.display = "inline-block";
+                        }
+
+                        // File type handling
+                        if (contentType.includes("spreadsheet") || contentType.includes("excel") || contentType === "text/csv") {
+                            excelContainer.style.display = "block";
+
+                            const blobRes = await axios.get(fileUrl, { responseType: "arraybuffer" });
+                            const data = new Uint8Array(blobRes.data);
+                            const workbook = XLSX.read(data, { type: "array" });
+                            const firstSheet = workbook.SheetNames[0];
+                            excelContainer.innerHTML = XLSX.utils.sheet_to_html(workbook.Sheets[firstSheet]);
+
+                        } else if (contentType.startsWith("image/")) {
+                                      // ✅ Use <img> instead of iframe for images
+                    document.getElementById("imageContainer").style.display = "block";
+                    document.getElementById("imageViewer").src = fileUrl;
+                            // frame.style.display = "block";
+                            // frame.src = fileUrl;
+
+                        } else if (contentType === "application/pdf") {
+                            frame.style.display = "block";
+                            frame.src = fileUrl + "#toolbar=1";
+
+                        } else {
+                            // Unsupported format message already shown, download always visible
+                            msg.style.display = "block";
+                        }
+
+                        new bootstrap.Modal(document.getElementById("fileViewerModal")).show();
+
+                    } catch (err) {
+                        console.error("Error viewing file:", err);
+                        // alert("Could not open file for viewing.");
+                                showError("Could not open file for viewing.");
+                    } finally {
+                        hideLoader();
+                    }
+                }
+
+
+
+
+
+
+
+                // Accept group
+                document.getElementById('acceptGroupBtn').onclick = async () => {
+                    // Ask for confirmation
+                    const result = await showConfirm("Are you sure you want to submit this group?");
+                    if (!result.isConfirmed) return; // If user clicks "No", stop execution
+
+                    showLoader();
+
+                    try {
+                        const rows = Object.keys(rowState).map(k => ({
+                            ItemId: parseInt(k),
+                            IsRejected: rowState[k].rejected,
+                            IsSpecial: rowState[k].special,
+                            NewSanctionedAmount: rowState[k].newAmount,
+                                     Reason: rowState[k].rejected ? (rowState[k].reason || "") : ""
+                                }));
+
+                        await axios.post('/api/dashboard/accept-group', {
+                            EmpID: currentEmpID,
+                            SubmissionDate: currentSubmissionDate,
+                            ProjectCode: currentProjectCode,
+                            ActionBy: empid,
+                            ExpenseId: ExpenseBillId1,
+                            Designation: designation,
+                            Rows: rows
+                        });
+
+                        bootstrap.Modal.getInstance(document.getElementById('groupModal')).hide();
+                        showSuccess("Group accepted successfully!");
+                        loadGroups();
+                    } catch (error) {
+                        showError("Failed to accept group: " + (error.response?.data?.message || error.message));
+                    } finally {
+                        hideLoader();
+                    }
+                };
+
+                // Reject group
+                // document.getElementById('rejectGroupBtn').onclick = async () => {
+                //     // Ask for confirmation
+                //     const result = await showConfirm("Are you sure you want to reject this group?");
+                //     if (!result.isConfirmed) return; // If user clicks "No", stop execution
+
+                //     showLoader();
+
+                //     try {
+                //         await axios.post('/api/dashboard/reject-group', {
+                //             EmpID: currentEmpID,
+                //             SubmissionDate: currentSubmissionDate,
+                //             ProjectCode: currentProjectCode,
+                //             ActionBy: empid,
+                //             ExpenseId: ExpenseBillId1
+                //         });
+
+                //         bootstrap.Modal.getInstance(document.getElementById('groupModal')).hide();
+                //         showSuccess("Group rejected successfully!");
+                //         loadGroups();
+                //     } catch (error) {
+                //         showError("Failed to reject group: " + (error.response?.data?.message || error.message));
+                //     } finally {
+                //         hideLoader();
+                //     }
+                // };
+
+                        document.getElementById('rejectGroupBtn').onclick = () => {
+                    new bootstrap.Modal(document.getElementById('groupRejectReasonModal')).show();
+                };
+        //and the function
+                async function submitGroupReject() {
+                    const reason = document.getElementById("groupRejectReason").value.trim();
+
+                    if (!reason) {
+                        showError("Please enter rejection reason.");
+                        return;
+                    }
+
+                    showLoader();
+
+                    try {
+                        await axios.post('/api/dashboard/reject-group', {
+                            EmpID: currentEmpID,
+                            SubmissionDate: currentSubmissionDate,
+                            ProjectCode: currentProjectCode,
+                            ActionBy: empid,
+                            ExpenseId: ExpenseBillId1,
+                            Reason: reason  // ⭐ send to backend
+                        });
+
+                        bootstrap.Modal.getInstance(document.getElementById('groupRejectReasonModal')).hide();
+                        bootstrap.Modal.getInstance(document.getElementById('groupModal')).hide();
+
+                        showSuccess("Group rejected successfully!");
+                        loadGroups();
+                    } catch (error) {
+                        showError("Failed to reject group: " + (error.response?.data?.message || error.message));
+                    } finally {
+                        hideLoader();
+                    }
+                }
+
+
+                // Initial load
+                loadGroups();
+
+                         //sweet alert
+                          // Success Alert
+                        function showSuccess(msg) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success',
+                                text: msg,
+                                showConfirmButton: false,
+                                timer: 1500
+                            });
+                        }
+
+                        // Error Alert
+                        function showError(msg) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: msg
+                            });
+                        }
+
+                        // Confirmation Alert
+                        function showConfirm(msg) {
+                            return Swal.fire({
+                                title: 'Confirm',
+                                text: msg,
+                                icon: 'question',
+                                showCancelButton: true,
+                                confirmButtonColor: '#3085d6',
+                                cancelButtonColor: '#d33',
+                                confirmButtonText: 'Yes',
+                                cancelButtonText: 'No'
+                            });
+                        }
 
     </script>
 }

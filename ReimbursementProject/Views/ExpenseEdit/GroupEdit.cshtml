@@ -1,0 +1,696 @@
+﻿@model ReimbursementProject.Models.ExpenseLogBook
+@{
+    ViewBag.Title = "Edit Expense";
+    var types = ViewBag.Types as List<ReimbursementProject.Models.TypeOfExpenses>;
+    var employees = ViewBag.Employee;
+    var expenseAmount = ViewBag.ExpenseAmount;
+}
+@if (!(User.Identity?.IsAuthenticated ?? false))
+{
+    <script>
+        window.location.href = "/Home/Login";
+    </script>
+}
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<style>
+    .tag-box {
+        background: #0d6efd;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 5px;
+        margin-right: 5px;
+        margin-top: 5px;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .tag-remove {
+        margin-left: 5px;
+        cursor: pointer;
+        color: #ffdddd;
+        font-weight: bold;
+    }
+</style>
+
+<div class="container mt-4">
+
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="m-0 fw-bold text-center">Edit Expense Entry</h4>
+        </div>
+
+        <div class="card-body">
+
+            <!-- TOP SECTION: SITE NAME + PROJECT CODE + CHANGE BUTTON -->
+            <div class="card mb-4 border-0 shadow-sm " id="updatePandS">
+                <div class="card-body">
+
+                    <h5 class="fw-bold text-primary mb-3">Project Details</h5>
+
+                    <div class="row g-3 align-items-end">
+
+                        <!-- SITE NAME -->
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Site Name</label>
+                            <input type="text" id="siteName" class="form-control form-control-lg"
+                                   placeholder="Enter Site Name"
+                                   value="@Model.SiteName" />
+                        </div>
+
+                        <!-- PROJECT CODE -->
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Project Code (Purpose)</label>
+                            <input type="text" id="ProjectCode" class="form-control form-control-lg"
+                                   placeholder="Enter Project Code"
+                                   value="@Model.ProjectCode" />
+                        </div>
+
+                        <!-- CHANGE BUTTON -->
+                        <div class="col-md-4 text-start text-md-end">
+                            <button id="btnChange" class="btn btn-lg btn-primary mt-2 px-4 fw-bold">
+                                <i class="bi bi-pencil-square me-1"></i> Update Group
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            <!-- DATE + TYPE OF EXPENSE -->
+            <div class="row mb-3 text-center">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold text-center">Date of Expense</label>
+                    <input type="date" id="DateofExpense" class="form-control"
+                           value="@Model.DateofExpense?.ToString("yyyy-MM-dd")"
+                           max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Type of Expense</label>
+                    <select id="TypeOfExpense" asp-for="TypeOfExpense" asp-items="@(new SelectList(types, "TypeOfExpense", "TypeOfExpense"))"
+                            class="form-select">
+                    </select>
+
+                </div>
+                <!-- TRAVEL LOCATION -->
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Travel Location/Time/Description</label>
+                    <input type="text" id="TravelLocation" class="form-control" value="@Model.TravelLocation" />
+                </div>
+
+            </div>
+
+
+
+            <!-- FELLOW MEMBERS -->
+            <div class="row mb-2">
+                <div class="col-md-12">
+                    <label class="form-label fw-bold">Fellow Members</label>
+                    <input id="FellowInput" type="text" class="form-control" placeholder="Type name..." autocomplete="off" />
+                    <div id="suggestions" class="border bg-white position-absolute w-100 d-none"></div>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-12" id="selectedMembers"></div>
+            </div>
+
+            <!-- QUANTITY + KM -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Bill Document</label><br />
+
+
+
+                    <!-- New Upload Input -->
+                    <input type="file" id="BillDocument" class="form-control" />
+                    @if (Model.BillDocument != null)
+                    {
+                        <div id="existingBillBox" class="mb-2">
+                            <p class="text-success">
+                                Existing File: <strong>@Model.BillFileName</strong>
+                            </p>
+                            <button class="btn btn-sm btn-danger" type="button" id="btnRemoveBill">
+                                Remove File
+                            </button>
+                        </div>
+                        <input type="hidden" id="RemoveOldFile" value="false" />
+                    }
+
+                  
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Quantity</label>
+                    <input type="number" id="Quantity" min="1" class="form-control" value="@Model.Quantity" />
+                </div>
+
+                <div class="col-md-4 d-none" id="KmBox">
+                    <label class="form-label fw-bold">KM Travelled</label>
+                    <input type="number" id="Km" class="form-control" value="0" />
+                </div>
+
+            </div>
+
+            <!-- BILL UPLOAD -->
+            <div class="row mb-3">
+            </div>
+
+            <!-- SANCTIONED AMOUNT -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Sanctioned Amount</label>
+                    <input type="number" id="SanctionedAmount" class="form-control" value="@Model.SanctionedAmount" readonly />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Claim Amount</label>
+                    <input type="number" id="ClaimAmount" class="form-control" value="@Model.ClaimAmount" />
+                </div>
+            </div>
+
+            <!-- BUTTONS -->
+            <div class="text-center btnblockall  mt-4">
+                @if (Model.Rejection != "reject"&&Model.Status!="0")
+                {
+                    <button id="btnAddNew" class="btn btn-secondary fw-bolder w-auto">Add New</button>
+                }
+                <button id="btnSave" class="btn btn-success fw-bolder w-auto">Save</button>
+                <button id="btnDelete" class="btn btn-danger fw-bolder w-auto">Delete</button>
+                <button type="button" id="btnCancel" class="btn btn-dark fw-bolder w-auto" ">Cancel</button>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    const employees = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.Employee));
+    const limits = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.ExpenseAmount));
+
+    let selectedMembers = [];
+
+        // --------------------------------------------------------
+    // LOAD EXISTING FELLOW MEMBERS FROM MODEL
+    // --------------------------------------------------------
+    $(document).ready(function () {
+
+    @* If Model.FellowMembers contains: "John(101),David(102)" *@
+
+        var existing = "@Model.FellowMembers";
+
+        if (existing && existing.length > 0) {
+
+            let members = existing.split(",");
+
+            members.forEach(item => {
+                let name = item.substring(0, item.lastIndexOf("("));
+                let id = item.substring(item.lastIndexOf("(") + 1, item.lastIndexOf(")"));
+
+                selectedMembers.push({
+                    EmpID: id,
+                    EmpName: name
+                });
+            });
+
+            renderSelectedMembers();
+
+            // Set quantity = fellows + 1 (for main employee)
+            $("#Quantity").val(selectedMembers.length + 1);
+
+            calculateSanctioned();
+        }
+    });
+
+
+    // --------------------------------------------------------
+    // SHOW SUGGESTIONS
+    // --------------------------------------------------------
+    $("#FellowInput").on("keyup", function () {
+        let text = $(this).val().toLowerCase();
+        if (text.length < 1) {
+            $("#suggestions").addClass("d-none");
+            return;
+        }
+
+        let list = employees.filter(e => e.EmpName.toLowerCase().includes(text));
+
+        let html = "";
+        list.forEach(e => {
+            html += `<div class="p-2 suggestion-item" style="cursor:pointer"
+                         data-id="${e.EmpID}" data-name="${e.EmpName}">
+                         ${e.EmpName} (${e.EmpID})
+                     </div>`;
+        });
+
+        $("#suggestions").html(html).removeClass("d-none");
+    });
+
+    // SELECT MEMBER
+    $(document).on("click", ".suggestion-item", function () {
+        let id = $(this).data("id");
+        let name = $(this).data("name");
+
+        selectedMembers.push({ EmpID: id, EmpName: name });
+        renderSelectedMembers();
+
+        $("#FellowInput").val("");
+        $("#suggestions").addClass("d-none");
+
+        $("#Quantity").val(selectedMembers.length + 1);
+        calculateSanctioned();
+    });
+
+    function renderSelectedMembers() {
+        let html = "";
+        selectedMembers.forEach((m, index) => {
+            html += `<span class="tag-box">${m.EmpName} (${m.EmpID})
+                        <span class="tag-remove" onclick="removeMember(${index})">x</span>
+                     </span>`;
+        });
+        $("#selectedMembers").html(html);
+    }
+
+    function removeMember(i) {
+        selectedMembers.splice(i, 1);
+        renderSelectedMembers();
+        $("#Quantity").val(selectedMembers.length + 1);
+        calculateSanctioned();
+    }
+
+    // --------------------------------------------------------
+    // KM BOX SHOW / HIDE
+    // --------------------------------------------------------
+    $("#TypeOfExpense").on("change", function () {
+        toggleKmBox();
+        calculateSanctioned();
+    });
+
+
+    function toggleKmBox() {
+        let type = $("#TypeOfExpense").val();
+        if (type === "TRAVEL CAR/KM" || type === "TRAVEL BIKE/KM") {
+            $("#KmBox").removeClass("d-none");
+        } else {
+            $("#KmBox").addClass("d-none");
+        }
+    }
+    toggleKmBox();
+
+    // --------------------------------------------------------
+    // SANCTIONED AMOUNT CALCULATION
+    // --------------------------------------------------------
+    $("#Km, #Quantity, #BillDocument, #TypeOfExpense").on("change", calculateSanctioned);
+
+       function calculateSanctioned() {
+        let type = $("#TypeOfExpense").val();
+        let qty = parseInt($("#Quantity").val());
+        let km = parseInt($("#Km").val());
+
+        let limit = limits.find(x => x.TypeOfExpense === type);
+        // If limit not found, set defaults
+    if (!limit) {
+        limit = { MaxLimitWithBill: 0, MaxLimitWOBill: 0 };
+    }
+
+        let sanctioned = 0;
+
+        let newFileUploaded = $("#BillDocument")[0].files.length > 0;
+        let oldFileRemoved = $("#RemoveOldFile").val() === "true";
+
+        // *** MAIN LOGIC YOU WANT ***
+        let hasBill =
+            newFileUploaded ? true :
+            (!oldFileRemoved && @((Model.BillDocument != null).ToString().ToLower())) ? true :
+            false;
+
+        // CASE 1: KM based expense
+        if (type === "TRAVEL CAR/KM" || type === "TRAVEL BIKE/KM") {
+            sanctioned = km * limit.MaxLimitWithBill;
+        }
+        // CASE 2: OTHER EXPENSE TYPES
+        else {
+            if (hasBill)
+                sanctioned = qty * limit.MaxLimitWithBill;
+            else
+                sanctioned = qty * limit.MaxLimitWOBill;
+        }
+
+        $("#SanctionedAmount").val(sanctioned);
+        validateClaimAmount();
+    }
+
+
+    // Claim amount validation
+    $("#ClaimAmount").on("input", validateClaimAmount);
+    //km santiond amount calucuation on click event
+    $("#Km").on("input",calculateSanctioned);
+        $("#btnRemoveBill").on("click", function () {
+        $("#existingBillBox").hide();
+        $("#RemoveOldFile").val("true");
+            calculateSanctioned();
+    });
+
+
+    function validateClaimAmount() {
+        let claim = parseFloat($("#ClaimAmount").val());
+        let sanctioned = parseFloat($("#SanctionedAmount").val());
+
+        if (claim > sanctioned) {
+            $("#ClaimAmount").css("background", "yellow");
+        } else {
+            $("#ClaimAmount").css("background", "white");
+        }
+    }
+
+    // --------------------------------------------------------
+    // SAVE UPDATE API CALL
+    // --------------------------------------------------------
+       $("#btnSave").on("click", function () {
+              if (!validateForm()) return; // Stop if validation fails
+        showConfirm("Are you sure you want to save the changes?")
+            .then((result) => {
+
+                if (!result.isConfirmed) return; // User clicked Cancel
+
+                let id = @Model.ID;
+                let km1=parseInt($("#Km").val());
+
+                let fd = new FormData();
+                fd.append("DateofExpense", $("#DateofExpense").val());
+                fd.append("TypeOfExpense", $("#TypeOfExpense").val());
+                fd.append("TravelLocation", $("#TravelLocation").val());
+                fd.append("Quantity", $("#Quantity").val());
+                fd.append(
+                    "FellowMembers",
+                    selectedMembers.map(m => `${m.EmpName}(${m.EmpID})`).join(",")
+                );
+                fd.append("SanctionedAmount", $("#SanctionedAmount").val());
+                fd.append("ClaimAmount", $("#ClaimAmount").val());
+                fd.append("RemoveOldFile", $("#RemoveOldFile").val());
+
+                if ($("#BillDocument")[0].files.length > 0)
+                    fd.append("BillDocument", $("#BillDocument")[0].files[0]);
+
+                $.ajax({
+                    url: `/api/expenseedit/update/${id}/${km1}`,
+                    method: "POST",
+                    data: fd,
+                    processData: false,
+                    contentType: false,
+                    success: function () {
+                        showSuccess("Updated Successfully");
+                        setTimeout(() => window.location.href = "/Home/Dashboard", 1500);
+                    }
+                });
+
+            });
+
+    });
+
+
+    // --------------------------------------------------------
+    // ADD NEW
+    // --------------------------------------------------------
+        // --------------------------------------------------------
+    // ADD NEW
+    // --------------------------------------------------------
+      $("#btnAddNew").on("click", function () {
+
+        showConfirm("Are you sure you want to add a new entry?")
+            .then((result) => {
+
+                if (!result.isConfirmed) return; // User cancelled
+
+                // Clear all input fields
+                $("#DateofExpense").val("");
+                $("#TypeOfExpense").val("");
+                $("#TravelLocation").val("");
+                $("#Quantity").val(1);
+                $("#Km").val(0);
+                $("#ClaimAmount").val("");
+                $("#SanctionedAmount").val("");
+                $("#BillDocument").val("");
+                $("#RemoveOldFile").val("false");
+
+                // Clear selected members
+                selectedMembers = [];
+                $("#selectedMembers").html("");
+
+                // Hide old bill
+                $("#existingBillBox").hide();
+                //hide the above box
+                  $("#updatePandS").hide();
+
+                // Reset KM box
+                toggleKmBox();
+
+                // Hide Save/Delete
+                $("#btnSave").addClass("d-none");
+                $("#btnDelete").addClass("d-none");
+
+                // Hide Add New
+                $("#btnAddNew").addClass("d-none");
+
+                // Remove old Save New button
+                $("#btnSaveNew").remove();
+
+                // Add Save New button dynamically
+                $("<button id='btnSaveNew' class='btn btn-success mt-3'>Save New</button>")
+                    .appendTo(".btnblockall")
+                    .on("click", saveNew);
+
+                // Success alert
+                // showSuccess("Form cleared. Ready for new entry!");
+            });
+    });
+
+
+    //saving jnew
+        function saveNew() {
+               if (!validateForm()) return; // Stop if validation fails
+        showConfirm("Are you sure you want to save this new expense?")
+            .then((result) => {
+                if (result.isConfirmed) {
+                     let km1=parseInt($("#Km").val());
+                    let fd = new FormData();
+                    fd.append("DateofExpense", $("#DateofExpense").val());
+                    fd.append("TypeOfExpense", $("#TypeOfExpense").val());
+                    fd.append("TravelLocation", $("#TravelLocation").val());
+                    fd.append("IRB", '@ViewBag.IRB');
+                    fd.append("SubmissionDate", '@ViewBag.SubmissionDate');
+                    fd.append("EmpID", '@ViewBag.EmpID');
+                    fd.append("ProjectCode", '@ViewBag.ProjectCode');
+                    fd.append("SiteName", '@ViewBag.SiteName');
+                    fd.append("ExpenseID", '@ViewBag.ExpenseID');
+
+                    fd.append("Quantity", $("#Quantity").val());
+                    fd.append(
+                        "FellowMembers",
+                        selectedMembers.map(m => `${m.EmpName}(${m.EmpID})`).join(",")
+                    );
+                    fd.append("SanctionedAmount", $("#SanctionedAmount").val());
+                    fd.append("ClaimAmount", $("#ClaimAmount").val());
+
+                    if ($("#BillDocument")[0].files.length > 0)
+                        fd.append("BillDocument", $("#BillDocument")[0].files[0]);
+
+                    $.ajax({
+                        url: `/api/expenseedit/createnew/${km1}`,
+                        method: "POST",
+                        data: fd,
+                        processData: false,
+                        contentType: false,
+                        success: function () {
+                            showSuccess("Inserted Successfully");
+                            setTimeout(() => window.location.href = "/Home/Dashboard", 1500);
+                        },
+                        error: function () {
+                            showError("Error while saving the expense");
+                        }
+                    });
+                }
+            });
+    }
+
+
+    // --------------------------------------------------------
+    // DELETE
+    // --------------------------------------------------------
+       $("#btnDelete").on("click", function () {
+        showConfirm("Do you really want to delete this expense?")
+            .then((result) => {
+                if (result.isConfirmed) {
+
+                    let id = @Model.ID;
+
+                    $.ajax({
+                        url: `/api/expenseedit/delete/${id}`,
+                        method: "DELETE",
+                        success: function () {
+                            showSuccess("Deleted Successfully");
+                            setTimeout(() => window.location.href = "/Home/Dashboard", 1500);
+                        },
+                        error: function () {
+                            showError("Failed to delete");
+                        }
+                    });
+
+                }
+            });
+    });
+
+     //change the project code and site name
+        $("#btnChange").on("click", function () {
+
+        let id = @Model.ExpenseID;  // expense id of entire group
+
+        let site = $("#siteName").val();
+        let project = $("#ProjectCode").val();    // fix input id
+
+        if (!site || !project) {
+            showError("Site Name and Project Code are required");
+            return;
+        }
+
+        showConfirm("Do you want to update Site Name & Project Code for all entries?")
+            .then(result => {
+                if (!result.isConfirmed) return;
+
+                $.ajax({
+                    url: `/api/expenseedit/change/${id}`,
+                    method: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify({
+                        SiteName: site,
+                        ProjectCode: project
+                    }),
+                    success: function (res) {
+                        showSuccess("Updated successfully");
+                        setTimeout(() => location.reload(), 1000);
+                    },
+                    error: function () {
+                        showError("Error updating entries");
+                    }
+                });
+
+            });
+
+    });
+
+    //alert message
+        // Success Alert
+    function showSuccess(msg) {
+        Swal.fire({
+            icon: 'success',
+            title: 'Success',
+            text: msg,
+            showConfirmButton: false,
+            timer: 1500
+        });
+    }
+
+    // Error Alert
+    function showError(msg) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: msg
+        });
+    }
+
+    // Confirmation Alert (returns promise)
+    function showConfirm(msg) {
+        return Swal.fire({
+            title: 'Are you sure?',
+            text: msg,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'No'
+        });
+    }
+
+         $("#btnCancel").on("click", function () {
+
+        showConfirm("Do you really want to cancel and go back? Unsaved changes will be lost.")
+            .then((result) => {
+                if (result.isConfirmed) {
+                    // showSuccess("Returning to previous page...");
+                    setTimeout(() => history.back(), 12);
+                }
+            });
+
+    });
+
+    //validation for saving the data
+        function validateForm() {
+        let date = $("#DateofExpense").val();
+        let type = $("#TypeOfExpense").val();
+        let claim = $("#ClaimAmount").val();
+
+        if (!date) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Missing Information',
+                text: 'Please select the Date of Expense.',
+            });
+            return false;
+        }
+
+        if (!type) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Missing Information',
+                text: 'Please select the Type of Expense.',
+            });
+            return false;
+        }
+
+        if (!claim || parseFloat(claim) <= 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Missing Information',
+                text: 'Please enter a valid Claim Amount.',
+            });
+            return false;
+        }
+
+        return true;
+    }
+
+      //bill document checking logic
+        // Bill file validation
+    $("#BillDocument").on("change", function () {
+        const file = this.files[0];
+        if (!file) return;
+
+        const allowedTypes = ["image/jpeg", "image/png", "application/pdf",
+                              "application/vnd.ms-excel",
+                              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"];
+
+        // Check file type
+        if (!allowedTypes.includes(file.type)) {
+            showError("This file type is not accepted. Allowed types: JPG, PNG, PDF, XLS, XLSX.");
+            $(this).val(""); // clear the invalid file
+            return;
+        }
+
+        // Check file size (1 MB = 1048576 bytes)
+        if (file.size > 1048576) {
+            showError(" Try to upload file less than 1 MB.");
+           /*  $(this).val(""); */ // clear the invalid file
+            // return;
+        }
+
+        // Recalculate sanctioned amount if needed
+        calculateSanctioned();
+    });
+
+
+</script>

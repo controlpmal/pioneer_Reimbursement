@@ -1,0 +1,48 @@
+﻿@model IEnumerable<ReimbursementProject.Models.TypeOfExpenses>
+@{
+
+    var designationClaim = User.FindFirst("Designation")?.Value ?? "";
+}
+
+<script>
+    // Access control based on session claim
+    const designation = "@designationClaim";
+    if (designation.toUpperCase() !== "HR") {
+        window.location.href = "/Home/Dashboard";
+    }
+</script>
+
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white d-flex justify-content-between">
+            <h5>Type Of Expenses</h5>
+            <a asp-action="Create" class="btn btn-light btn-sm">+ Add New</a>
+        </div>
+
+        <div class="card-body table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Expense Type</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.ID</td>
+                            <td>@item.TypeOfExpense</td>
+                            <td class="text-center">
+                                <a asp-action="Edit" asp-route-id="@item.ID" class="btn btn-warning btn-sm">Edit</a>
+                            @*     <a asp-action="Details" asp-route-id="@item.ID" class="btn btn-info btn-sm">Details</a> *@
+                                <a asp-action="Delete" asp-route-id="@item.ID" class="btn btn-danger btn-sm">Delete</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -75,6 +75,7 @@ namespace ReimbursementProject.Models
         public string? Rejection { get; set; }  // varchar(10)
         [ForeignKey("ExpenseBillBook")]
         public long ExpenseID { get; set; }
+        public string? Reason { get; set; }
 
         public ExpenseBillBook ExpenseBillBook { get; set; }
 

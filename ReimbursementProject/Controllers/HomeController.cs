@@ -12,10 +12,13 @@ namespace locationget.Controllers
     public class HomeController : Controller
     {
         public readonly ApplicationDbContext _context;
+        private readonly StoreAppDbContext _storecontext;
 
-        public HomeController(ApplicationDbContext context)
+        public HomeController(ApplicationDbContext context,
+        StoreAppDbContext storecontext)
         {
             _context = context;
+            _storecontext = storecontext;
         }
         // GET: Home/Index
 
@@ -33,6 +36,33 @@ namespace locationget.Controllers
             return View();
         }
 
+        public IActionResult ExpenseReport()
+        {
+            return View();
+        }
+        // POST: ExpenseReport/Filter
+      
+        [HttpPost]
+        public async Task<IActionResult> Filter(DateTime? fromDate, DateTime? toDate)
+        {
+            // Start with all records
+            var query = _context.ExpenseLogBook.AsQueryable();
+
+            // Filter by date range if provided
+            if (fromDate.HasValue)
+                query = query.Where(e => e.DateofExpense >= fromDate.Value&& e.Rejection!="reject");
+
+            if (toDate.HasValue)
+                query = query.Where(e => e.DateofExpense <= toDate.Value&& e.Rejection != "reject");
+
+            // Order by EmpID
+            var data = await query
+                .OrderBy(e => e.EmpID)
+                .ThenBy(e => e.DateofExpense) // optional: secondary sort by date
+                .ToListAsync();
+
+            return View("ExpenseReport", data);
+        }
 
         //[HttpGet]
         //public IActionResult Details(string type)
@@ -41,7 +71,16 @@ namespace locationget.Controllers
         //    ViewBag.Type = type;
         //    return View();
         //}
-
+        [HttpGet]
+        public IActionResult ProjectExpense()
+        {
+            return View(); // This will load Views/Account/Login.cshtml
+        }
+        [HttpGet]
+        public IActionResult EmployeePendingAmount()
+        {
+            return View(); // This will load Views/Account/Login.cshtml
+        }
         [HttpGet]
         public IActionResult Login()
         {
@@ -83,6 +122,55 @@ namespace locationget.Controllers
         public IActionResult Dashboard()
         {
             return View(); // This will load Views/Account/Login.cshtml
+        }
+
+        //prifile controller
+        [Authorize]
+        public IActionResult Profile()
+        {
+            var empId = User.FindFirst("EmpID")?.Value;
+
+            if (string.IsNullOrEmpty(empId))
+                return RedirectToAction("Login");
+
+            var profile = _context.EmployeeDetails
+                .FirstOrDefault(e => e.EmpID == empId);
+
+            if (profile == null)
+                return NotFound();
+
+            return View(profile);
+        }
+        [Authorize]
+        [HttpPost]
+        public IActionResult ChangePassword(string newPassword)
+        {
+            if (string.IsNullOrWhiteSpace(newPassword))
+            {
+                TempData["Error"] = "Password cannot be empty";
+                return RedirectToAction("Profile");
+            }
+
+            var empId = User.FindFirst("EmpID")?.Value;
+
+            var employee = _context.EmployeeDetails
+                .FirstOrDefault(e => e.EmpID == empId);
+            var storeEmployee = _storecontext.Employees.FirstOrDefault(e => e.UserName == empId);
+
+            if (employee == null)
+                return NotFound();
+          
+
+            // 🔐 Ideally hash the password
+            employee.Password = newPassword;
+            storeEmployee.Password=newPassword;
+          
+
+            _context.SaveChanges();
+            _storecontext.SaveChanges();
+
+            TempData["Success"] = "Password updated successfully";
+            return RedirectToAction("Profile");
         }
 
 

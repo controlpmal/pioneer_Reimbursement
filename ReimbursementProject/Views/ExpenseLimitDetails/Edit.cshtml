@@ -1,0 +1,19 @@
+﻿@model ReimbursementProject.Models.ExpenseLimitDetails
+
+@{
+
+    var designationClaim = User.FindFirst("Designation")?.Value ?? "";
+}
+
+<script>
+    // Access control based on session claim
+    const designation = "@designationClaim";
+    if (designation.toUpperCase() !== "HR") {
+        window.location.href = "/Home/Dashboard";
+    }
+</script>
+
+<form asp-action="Edit" method="post">
+    <input type="hidden" asp-for="ID" />
+    @Html.Partial("Create", Model)
+</form>

@@ -14,27 +14,27 @@
 <div class="container mt-4">
     <h3 class="mb-3">New Employee Requests</h3>
 
-    <!-- ✅ Bootstrap responsive wrapper -->
+    <!-- ✅ Desktop Table -->
     <div class="table-responsive d-none d-md-block">
         <table class="table table-striped align-middle" id="newEmployeesTable">
             <thead class="table-info">
                 <tr>
                     <th>EmpID</th>
                     <th>Name</th>
-                    <th>Irb</th>
+                    <th>IRB EMP_ID</th>
                     <th>Level</th>
                     <th>Designation</th>
                     <th>Department</th>
+                    <th>Location</th>
+                    <th>Email</th> <!-- ✅ Shown only -->
                     <th>Action</th>
                 </tr>
             </thead>
-            <tbody>
-                <!-- Rows will be loaded by JS -->
-            </tbody>
+            <tbody></tbody>
         </table>
     </div>
 
-    <!-- ✅ Card layout for mobile -->
+    <!-- ✅ Mobile Cards -->
     <div id="newEmployeesCards" class="d-md-none"></div>
 </div>
 
@@ -52,7 +52,7 @@
                         cardContainer.innerHTML = "";
 
                         res.data.forEach(emp => {
-                            // Desktop Row
+                            // 🖥️ Desktop Row
                             const tr = document.createElement("tr");
                             tr.innerHTML = `
                                 <td>${emp.empId}</td>
@@ -70,17 +70,22 @@
                                 </td>
                                 <td><input type="text" class="form-control form-control-sm" value="${emp.empDesignation || ''}" /></td>
                                 <td><input type="text" class="form-control form-control-sm" value="${emp.empDepartment || ''}" /></td>
-                                <td>
-                                    <button class="btn btn-success btn-sm" onclick="approveEmployee('${emp.empId}', this)">Save</button>
-                                </td>
+                                <td><input type="text" class="form-control form-control-sm" value="${emp.empLocation || ''}" /></td>
+                                <td><input type="email" class="form-control form-control-sm bg-light" value="${emp.empMail || ''}" readonly /></td> <!-- ✅ Readonly -->
+                                       <td>
+            <button class="btn btn-danger btn-sm me-1" onclick="deleteEmployee('${emp.empId}', this)">Delete</button>
+            <button class="btn btn-success btn-sm" onclick="approveEmployee('${emp.empId}', this)">Save</button>
+        </td>
+
                             `;
                             tbody.appendChild(tr);
 
-                            // Mobile Card
+                            // 📱 Mobile Card
                             const card = document.createElement("div");
                             card.className = "card shadow-sm mb-3";
                             card.innerHTML = `
                                 <div class="card-body">
+
                                     <h6><strong>${emp.empName}</strong> (ID: ${emp.empId})</h6>
                                     <div class="mb-2">
                                         <label class="form-label">IRB</label>
@@ -105,42 +110,144 @@
                                         <label class="form-label">Department</label>
                                         <input type="text" class="form-control form-control-sm" value="${emp.empDepartment || ''}" />
                                     </div>
-                                    <button class="btn btn-success btn-sm mt-2 w-100" onclick="approveEmployee('${emp.empId}', this)">Save</button>
+                                    <div class="mb-2">
+                                        <label class="form-label">Department</label>
+                                        <input type="text" class="form-control form-control-sm" value="${emp.empLocation || ''}" />
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Email</label>
+        <input type="email" class="form-control form-control-sm bg-light" value="${emp.empMail || ''}" readonly />
+                                            </div>
+                                    <div class="text-nowrap">
+                                      <button class="btn btn-sm btn-danger me-1" onclick="deleteEmployee('${emp.empId}', this)">Delete</button>
+                                    <button class="btn btn-success btn-sm " onclick="approveEmployee('${emp.empId}', this)">Save</button>
+                                    </div>
                                 </div>
                             `;
                             cardContainer.appendChild(card);
                         });
                     });
             }
+             // ✅ Delete employee
+                        window.deleteEmployee = async function (empId, btn) {
 
-            window.approveEmployee = function(empId, btn) {
-                const row = btn.closest("tr") || btn.closest(".card-body");
-                const inputs = row.querySelectorAll("input, select");
+            const result = await showConfirm("Are you sure you want to reject this employee?");
+            if (!result.isConfirmed) return;
 
-                const updatedEmp = {
-                    IRB: inputs[0].value.trim(),
-                    Level: inputs[1].value.trim(),
-                    Designation: inputs[2].value.trim(),
-                    Dept: inputs[3].value.trim()
-                };
+            // ✅ Disable button + loader
+            btn.disabled = true;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>Deleting...`;
 
-                if (!updatedEmp.IRB || !updatedEmp.Level || !updatedEmp.Designation || !updatedEmp.Dept) {
-                    alert("⚠️ Please fill all fields before saving.");
-                    return;
+            try {
+                const res = await axios.delete(`/api/employee/${empId}`);
+
+                if (res.data.success) {
+                    btn.closest("tr")?.remove();
+                    btn.closest(".card")?.remove();
+                    showSuccess("❌ Employee request rejected");
+                } else {
+                    showError(res.data.message || "Delete failed");
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            } catch (err) {
+                showError("❌ Error while deleting employee");
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        };
+
+
+
+
+                   window.approveEmployee = async function (empId, btn) {
+
+            // ✅ Confirmation before save
+            const confirm = await showConfirm("Do you want to approve this employee?");
+            if (!confirm.isConfirmed) return;
+
+            const row = btn.closest("tr") || btn.closest(".card-body");
+            const inputs = row.querySelectorAll("input, select");
+
+            const updatedEmp = {
+                IRB: inputs[0].value.trim(),
+                Level: inputs[1].value.trim(),
+                Designation: inputs[2].value.trim(),
+                Dept: inputs[3].value.trim(),
+                CompanyLocation:inputs[4].value.trim(),
+            };
+
+            // ✅ Validation
+            if (!updatedEmp.IRB.startsWith("PMA0")) {
+                showError("❌ IRB EMP_ID must start with 'PMA0'");
+                return;
+            }
+
+            if (!updatedEmp.IRB || !updatedEmp.Level || !updatedEmp.Designation || !updatedEmp.Dept) {
+                showError("⚠️ Please fill all fields before saving.");
+                return;
+            }
+
+            // ✅ Disable button + loader
+            btn.disabled = true;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>Saving...`;
+
+            try {
+                const res = await axios.post(`/api/employee/approve/${empId}`, updatedEmp);
+
+                if (res.data.success) {
+                    row.remove();
+                    showSuccess("✅ Employee approved & email sent");
+                } else {
+                    showError(res.data.message || "Approval failed");
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            } catch (err) {
+                showError("❌ Server error while approving employee");
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        };
+        });
+
+            //sweet alert
+                  // Success Alert
+                function showSuccess(msg) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success',
+                        text: msg,
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
                 }
 
-                axios.post(`/api/employee/approve/${empId}`, updatedEmp)
-                    .then(res => {
-                        if (res.data.success) {
-                            row.remove(); // ✅ works for both table row & card
-                        } else {
-                            alert(res.data.message || "Error approving employee");
-                        }
-                    })
-                    .catch(() => {
-                        alert("❌ Something went wrong while saving.");
+                // Error Alert
+                function showError(msg) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: msg
                     });
-            }
-        });
+                }
+
+                // Confirmation Alert
+                function showConfirm(msg) {
+                    return Swal.fire({
+                        title: 'Confirm',
+                        text: msg,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Yes',
+                        cancelButtonText: 'No'
+                    });
+                }
+
+
     </script>
 }

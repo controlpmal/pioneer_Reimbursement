@@ -1,0 +1,94 @@
+﻿@model List<ReimbursementProject.Models.ExpenseLogBook>
+
+@{
+    ViewData["Title"] = "Expense Report";
+}
+@if (!(User.Identity?.IsAuthenticated ?? false))
+{
+    <script>
+        window.location.href = "/Home/Login";
+    </script>
+}
+
+<h3 class="text-center">Expense Report</h3>
+
+<form asp-action="Filter" method="post" class="row g-3 mb-3">
+    <div class="col-md-3">
+        <label for="fromDate" class="form-label">From Date</label>
+        <input type="date" class="form-control" id="fromDate" name="fromDate" />
+    </div>
+    <div class="col-md-3">
+        <label for="toDate" class="form-label">To Date</label>
+        <input type="date" class="form-control" id="toDate" name="toDate" />
+    </div>
+    <div class="col-md-3 align-self-end">
+        <button type="submit" class="btn btn-primary">Filter</button>
+        <button type="button" class="btn btn-secondary" onclick="printTable()">Print</button>
+    </div>
+</form>
+
+@if (Model != null && Model.Any())
+{
+    var totalSanctioned = Model.Sum(x => x.SanctionedAmount ?? 0); // Calculate total
+
+    <div id="printArea">
+        <table class="table table-bordered table-striped table-sm">
+            <thead class="table-dark">
+                <tr>
+                    <th>TypeOfExpense</th>
+                    <th>TravelLocation</th>
+                    <th>Quantity</th>
+                    <th>FellowMembers</th>
+                    <th>ClaimAmount</th>
+                    <th>SanctionedAmount</th>
+                    <th>EmpID</th>
+                    <th>SiteName</th>
+                    <th>ProjectCode</th>
+                    <th>DateofExpense</th>
+                    <th>Status</th>
+                    <th>IRB</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>@item.TypeOfExpense</td>
+                        <td>@item.TravelLocation</td>
+                        <td>@item.Quantity</td>
+                        <td>@item.FellowMembers</td>
+                        <td>@item.ClaimAmount</td>
+                        <td>@item.SanctionedAmount</td>
+                        <td>@item.EmpID</td>
+                        <td>@item.SiteName</td>
+                        <td>@item.ProjectCode</td>
+                        <td>@item.DateofExpense?.ToString("yyyy-MM-dd")</td>
+                        <td>@item.Status</td>
+                        <td>@item.IRB</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr class="table-secondary">
+                    <td colspan="5" class="text-end"><strong>Total Sanctioned Amount:</strong></td>
+                    <td><strong>@totalSanctioned</strong></td>
+                    <td colspan="6"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        function printTable() {
+            var printContents = document.getElementById('printArea').innerHTML;
+            var originalContents = document.body.innerHTML;
+
+            document.body.innerHTML = printContents;
+            window.print();
+            document.body.innerHTML = originalContents;
+            location.reload(); // reload to restore event bindings
+        }
+    </script>
+}

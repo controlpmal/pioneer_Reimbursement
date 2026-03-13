@@ -1,0 +1,350 @@
+﻿@model List<ReimbursementProject.Models.EmployeeAccount>
+
+@{
+    ViewData["Title"] = "Impress Management";
+    var designationClaim = User.FindFirst("Designation")?.Value ?? "";
+    var loginEmpId = User.FindFirst("EmpID")?.Value ?? "";
+}
+<script>
+    // Access control based on session claim
+    const designation = "@designationClaim";
+    if (designation.toUpperCase() !== "ACCOUNTS") {
+        window.location.href = "/Home/Dashboard";
+    }
+</script>
+@if (!(User.Identity?.IsAuthenticated ?? false))
+{
+    <script>
+        window.location.href = "/Home/Login";
+    </script>
+}
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+@* printing filter data  *@
+<div id="printAreaAll" style="display:none; padding:20px; font-family:Arial;">
+    <h3 style="text-align:center;">Pioneer Machine & Automation (P) LTD.</h3>
+    <h4 style="text-align:center;">
+        (A-1/175,176 & 177, Sec-17, Kavi Nagar Industrial Area, Ghaziabad-201002)
+    </h4>
+    <h3 style="text-align:center;">IMPRESS FILTERED REPORT</h3>
+    <hr>
+
+    <table border="1" width="100%" cellspacing="0" cellpadding="6">
+        <thead>
+            <tr>
+                <th>Emp ID</th>
+                <th>Emp Name</th>
+                <th>Amount</th>
+                <th>Payment Type</th>
+                <th>Mode</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody id="printAllBody"></tbody>
+    </table>
+
+    <br>
+    <div class="text-end">
+        <strong>Total Amount:</strong> ₹ <span id="printAllTotal"></span>
+    </div>
+</div>
+
+
+
+@* print single impress *@
+<div id="printArea" style="display:none; padding:20px; font-family:Arial;">
+    <h3 style="text-align:center;">Pioneer Machine & Automation (P) LTD.</h3>
+    <h4 style="text-align:center;">
+        (A-1/175,176 & 177, Sec-17, Kavi Nagar Industrial Area, Ghaziabad-201002)
+    </h4>
+    <h3 style="text-align:center;">IMPRESS BILL</h3>
+    <hr>
+
+    <p>
+        <strong>Employee Name:</strong> <span id="pEmpName"></span><br>
+        <strong>Employee ID:</strong> <span id="pEmpId"></span><br>
+        <strong>Project Description:</strong> <span id="pProjectDesc"></span><br>
+        <strong>Mode:</strong> <span id="pProjectMode"></span><br>
+
+        <strong>Payment Type:</strong> <span id="pPayment"></span><br>
+        <strong>Date:</strong> <span id="pDate"></span><br>
+    </p>
+
+    <table border="1" width="100%" cellspacing="0" cellpadding="6">
+        <thead>
+            <tr>
+                <th>Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td id="pAmount"></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <br>
+    <div class="text-end">
+        <strong>Total Amount:</strong> ₹ <span id="pTotal"></span>
+    </div>
+
+    <br><br>
+    <p style="text-align:right;" id="pApprovel">
+        Checked & Approved By HR Department
+    </p>
+</div>
+
+
+
+<div class="container mt-4">
+    <h3 class="text-center mb-4 fw-bold text-primary">Impress Management</h3>
+
+    <!-- Action Buttons & Filters -->
+    <div class="row g-2 align-items-end mb-4">
+        <div class="col-md-2">
+            <button id="btnPendingApprove" class="btn btn-warning w-100">Pending Approve</button>
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">From Date</label>
+            <input type="date" id="fromDate" class="form-control" />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">To Date</label>
+            <input type="date" id="toDate" class="form-control" />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">EmpID or Name</label>
+            <input type="text" id="searchText" class="form-control" placeholder="Enter EmpID or Name" />
+        </div>
+
+        <div class="col-md-1">
+            <button id="btnShowList" class="btn btn-primary w-100">Show</button>
+        </div>
+    </div>
+
+
+    <div class="text-end mb-2">
+        <button id="btnPrintFiltered" class="btn btn-success" style="display:none;">
+            Print Filtered Data
+        </button>
+    </div>
+
+    <!-- Table to show data -->
+    <div id="dataContainer" class="table-responsive mt-3">
+        <!-- Data loads dynamically here -->
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+        $('#btnPrintFiltered').click(function () {
+
+        const tbody = $('#printAllBody');
+        tbody.empty();
+
+        let total = 0;
+
+        window.filteredPrintData.forEach(row => {
+
+            let amount = row.advancE_AMOUNT || 0;
+            total += amount;
+
+            tbody.append(`
+                <tr>
+                    <td>${row.emP_ID}</td>
+                    <td>${row.emP_NAME}</td>
+                    <td>${amount.toFixed(2)}</td>
+                    <td>${row.paymenT_TYPE}</td>
+                    <td>${row.datetime ? new Date(row.datetime).toLocaleString() : ''}</td>
+                </tr>
+            `);
+        });
+
+        $('#printAllTotal').text(total.toFixed(2));
+
+        // Print only filtered area
+        const printContents = document.getElementById("printAreaAll").innerHTML;
+        const originalContents = document.body.innerHTML;
+
+        document.body.innerHTML = printContents;
+        window.print();
+        document.body.innerHTML = originalContents;
+
+        location.reload();
+    });
+
+
+        // Handle Print button click
+    $(document).on('click', '.btn-print', function () {
+
+        const row = $(this).closest('tr');
+
+        // Get data from row
+        const empId = row.find('td:eq(0)').text().trim();
+        const empName = row.find('td:eq(1)').text().trim();
+
+    // 👉 Make amount positive
+    let amount = parseFloat(row.find('td:eq(2)').text().trim()) || 0;
+    amount = Math.abs(amount);
+     const projectDescription = row.find('td:eq(3)').text().trim();
+      const mode = row.find('td:eq(4)').text().trim();
+        const paymentType = row.find('td:eq(5)').text().trim();
+        const dateTime = row.find('td:eq(6)').text().trim();
+
+        // Fill print area
+        $('#pEmpId').text(empId);
+        $('#pEmpName').text(empName);
+        $('#pAmount').text(amount);
+        $('#pTotal').text(amount);
+        $('#pProjectDesc').text(projectDescription);
+        $('#pProjectMode').text(mode);
+        $('#pPayment').text(paymentType);
+        $('#pDate').text(dateTime);
+
+        // Print only printArea
+        const printContents = document.getElementById("printArea").innerHTML;
+        const originalContents = document.body.innerHTML;
+
+        document.body.innerHTML = printContents;
+        window.print();
+        document.body.innerHTML = originalContents;
+
+        location.reload(); // restore page & events
+    });
+
+
+
+    // Load pending approvals
+    $('#btnPendingApprove').click(function () {
+        $.get('/EmployeeAccount/GetPendingImpress', function (data) {
+            renderPendingTable(data);
+        });
+    });
+
+    // Show filtered list (IMPRESS_AMOUNT == null)
+    $('#btnShowList').click(function () {
+        var from = $('#fromDate').val();
+        var to = $('#toDate').val();
+        var search = $('#searchText').val();
+
+        $.get('/EmployeeAccount/GetFilteredList', { fromDate: from, toDate: to, searchText: search }, function (data) {
+            renderFilteredTable(data);
+
+              // ✅ Show Print button if data exists
+            if (data.length > 0) {
+                $('#btnPrintFiltered').show();
+            } else {
+                $('#btnPrintFiltered').hide();
+            }
+
+            // Store filtered data globally
+            window.filteredPrintData = data;
+        });
+    });
+
+    // Render Pending Approve table
+    function renderPendingTable(data) {
+        if (data.length === 0) {
+            $('#dataContainer').html('<div class="alert alert-info text-center">No Pending Records Found</div>');
+            return;
+        }
+
+        let table = `<table class="table table-bordered table-hover align-middle">
+                        <thead class="table-warning text-center">
+                            <tr>
+                                <th>Emp ID</th>
+                                <th>Emp Name</th>
+                                <th>Impress Amount</th>
+                                  <th>Project Description</th>
+                                  <th>Mode</th>
+
+                                <th>Payment Type</th>
+                                <th>Date Time</th>
+                                <th>Approval Emp ID</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead><tbody>`;
+
+        data.forEach(row => {
+            table += `<tr>
+                        <td>${row.emP_ID ?? ''}</td>
+                        <td>${row.emP_NAME ?? ''}</td>
+                        <td>${row.impresS_AMOUNT ?? 0}</td>
+                         <td>${row.projecT_CODE ?? 0}</td>
+                         <td>${row.mode ?? 0}</td>
+
+                        <td>${row.paymenT_TYPE ?? ''}</td>
+                        <td>${row.datetime ? new Date(row.datetime).toLocaleString() : ''}</td>
+                        <td><input type="text" class="form-control approvalEmp" placeholder="Enter Approval Emp" value=@loginEmpId readonly/></td>
+                        <td class="text-center">
+                        <button class="btn btn-primary btn-print me-2" >Print</button>
+                            <button class="btn btn-success btn-accept" data-id="${row.id}">Accept</button>
+                        </td>
+                      </tr>`;
+        });
+
+        table += '</tbody></table>';
+        $('#dataContainer').html(table);
+    }
+
+    // Render filtered list table
+    function renderFilteredTable(data) {
+        if (data.length === 0) {
+            $('#dataContainer').html('<div class="alert alert-info text-center">No Records Found</div>');
+            return;
+        }
+
+        let table = `<table class="table table-bordered table-hover align-middle">
+                        <thead class="table-primary text-center">
+                            <tr>
+                                <th>Emp ID</th>
+                                <th>Emp Name</th>
+                                <th>Advance Amount</th>
+                                <th>Mode</th>
+                                <th>Payment Type</th>
+                                <th>Date Time</th>
+                            </tr>
+                        </thead><tbody>`;
+
+        data.forEach(row => {
+            table += `<tr>
+                        <td>${row.emP_ID ?? ''}</td>
+                        <td>${row.emP_NAME ?? ''}</td>
+                        <td>${row.advancE_AMOUNT ?? 0}</td>
+                        <td>${row.mode ?? 0}</td>
+                        <td>${row.paymenT_TYPE ?? ''}</td>
+                        <td>${row.datetime ? new Date(row.datetime).toLocaleString() : ''}</td>
+                      </tr>`;
+        });
+
+        table += '</tbody></table>';
+        $('#dataContainer').html(table);
+    }
+
+    // Handle Accept click
+    $(document).on('click', '.btn-accept', function () {
+        var id = $(this).data('id');
+        var approvalEmp = $(this).closest('tr').find('.approvalEmp').val();
+
+        if (!approvalEmp) {
+            alert('Please enter Approval Employee Name');
+            return;
+        }
+
+        $.post('/EmployeeAccount/AcceptImpressAccounts', { id: id, approvalEmp: approvalEmp }, function (response) {
+            alert(response.message);
+            $('#btnPendingApprove').click(); // reload list
+        });
+    });
+
+    // ✅ Load Pending list automatically when page opens
+    $(document).ready(function () {
+        $('#btnPendingApprove').click();
+    });
+</script>
+
+

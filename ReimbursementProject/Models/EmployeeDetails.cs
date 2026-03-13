@@ -8,7 +8,7 @@ namespace ReimbursementProject.Models
         [StringLength(20)]
         public string? EmpID { get; set; }  // varchar(20) → Primary Key
 
-        [StringLength(100)]
+        [StringLength(200)]
         public string? EmpName { get; set; }  // varchar(100)
         public string? MailID { get; set; }
 
@@ -29,5 +29,6 @@ namespace ReimbursementProject.Models
         [StringLength(20)]
         public string? Password { get; set; }  // varchar(200) (assuming password stored as hash)
         public string? Status { get; set; }
+        public string? CompanyLocation { get; set; }
     }
 }

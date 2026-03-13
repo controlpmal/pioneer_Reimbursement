@@ -1,0 +1,50 @@
+﻿@model ReimbursementProject.Models.ExpenseLimitDetails
+@{
+  
+    var designationClaim = User.FindFirst("Designation")?.Value ?? "";
+}
+
+<script>
+    // Access control based on session claim
+    const designation = "@designationClaim";
+    if (designation.toUpperCase() !== "HR") {
+        window.location.href = "/Home/Dashboard";
+    }
+</script>
+
+<div class="container mt-4">
+    <div class="card shadow col-md-8 mx-auto">
+        <div class="card-header bg-success text-white">
+            <h5>Create Expense Limit</h5>
+        </div>
+
+        <div class="card-body">
+            <form asp-action="Create" method="post">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Level" class="form-label"></label>
+                        <input asp-for="Level" class="form-control" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="TypeOfExpense" class="form-label"></label>
+                        <input asp-for="TypeOfExpense" class="form-control" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="MaxLimitWithBill" class="form-label"></label>
+                        <input asp-for="MaxLimitWithBill" class="form-control" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="MaxLimitWOBill" class="form-label"></label>
+                        <input asp-for="MaxLimitWOBill" class="form-control" />
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-success">Save</button>
+                <a asp-action="Index" class="btn btn-secondary">Back</a>
+            </form>
+        </div>
+    </div>
+</div>

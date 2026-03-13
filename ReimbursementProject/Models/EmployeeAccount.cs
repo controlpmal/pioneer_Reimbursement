@@ -23,5 +23,9 @@ namespace ReimbursementProject.Models
 
         [StringLength(100)]
         public string? APPROVAL_EMP { get; set; }  // varchar(100), nullable
+        public double? IMPRESS_AMOUNT { get; set; }
+        [StringLength(200)]
+        public string? PROJECT_CODE { get; set; } // float, nullable
+        public string? MODE { get; set; }
     }
 }

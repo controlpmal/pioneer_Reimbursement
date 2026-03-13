@@ -1,0 +1,270 @@
+﻿@model Tuple<List<ReimbursementProject.Models.EmployeeImpress>, List<ReimbursementProject.Models.EmployeeAccount>>
+
+@{
+    ViewData["Title"] = "Impress Management";
+    var impressList = Model.Item1;
+    var accountList = Model.Item2;
+
+    var pendingImpress = impressList.Where(i => i.STATUS == null || i.STATUS.ToLower() == "pending").ToList();
+    var pendingAccounts = accountList.Where(a => a.PAYMENT_TYPE == "IMPRESS" && a.IMPRESS_AMOUNT != null).ToList();
+    var approvedAccounts = accountList.Where(a => a.PAYMENT_TYPE == "IMPRESS" && a.IMPRESS_AMOUNT == null).ToList();
+    var designationClaim = User.FindFirst("Designation")?.Value ?? "";
+    var userDesignation = designationClaim.ToUpper();
+
+    List<EmployeeImpress> visibleImpressList = new();
+
+    if (userDesignation == "HR"||userDesignation=="HEAD")
+    {
+        // HR sees Pending + InProcess
+        visibleImpressList = impressList.Where(i => i.STATUS == null || i.STATUS == "inProcess" || i.STATUS.ToLower() == "pending").ToList();
+    }
+    else if (userDesignation == "AGM" || userDesignation == "CONSULTANT")
+    {
+        // AGM sees ONLY InProcess
+        visibleImpressList = impressList
+            .Where(i => i.STATUS == "inProcess")
+            .ToList();
+    }
+}
+
+
+<script>
+    // Access control based on session claim
+    const designation = "@designationClaim";
+    if (designation.toUpperCase() !== "HR"&& designation.toUpperCase() !== "AGM"&& designation.toUpperCase() !=="CONSULTANT"&& designation.toUpperCase() !== "HEAD") {
+        window.location.href = "/Home/Dashboard";
+    }
+</script>
+@if (!(User.Identity?.IsAuthenticated ?? false))
+{
+    <script>
+        window.location.href = "/Home/Login";
+    </script>
+}
+
+
+<link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+
+<div class="container mt-4">
+    <h3 class="mb-4 text-center fw-bold text-primary">Employee Impress Management</h3>
+
+    <!-- Top Buttons -->
+    <div class="d-flex justify-content-center gap-3 mb-4 flex-wrap">
+        <button class="btn btn-outline-info" id="hrApprovalBtn">
+            HR Approval List (<span>@pendingImpress.Count</span>)
+        </button>
+        <button class="btn btn-outline-primary" id="pendingBtn">
+            Pending to Account (<span id="pendingCount">@pendingAccounts.Count</span>)
+        </button>
+        <button class="btn btn-outline-success" id="approvedBtn">
+            Approved to Account (<span id="approvedCount">@approvedAccounts.Count</span>)
+        </button>
+    </div>
+
+    <!-- HR Approval Table (hidden by default) -->
+    <div id="hrApprovalSection" class="d-no">
+        <h5 class="text-info mt-4 mb-3">HR Approval Pending List</h5>
+        <div class="table-responsive shadow-sm rounded">
+            <table class="table table-striped table-hover align-middle text-center">
+                <thead class="table-info">
+                    <tr>
+                        <th>Emp ID</th>
+                        <th>Emp Name</th>
+                        <th>PROJECT_DETAILS</th>
+                        <th>MODE</th>
+                        <th>Impress Amount</th>
+                        <th>Advance Amount</th>
+                        <th>Remark</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in visibleImpressList)
+                    {
+                        <tr data-id="@item.ID">
+                            <td>@item.EmpID</td>
+                            <td>@item.EmpName</td>
+                            <td>@item.PROJECT_DETAILS</td>
+                            <td>@item.MODE</td>
+                            <td>@item.IMPRESS_AMOUNT</td>
+
+                            <td>
+                                <input type="number"
+                                       class="form-control form-control-sm advanceAmount"
+                                       value="@item.ADVANCE_AMOUNT"
+                                       @*  @(item.STATUS == "pending" && userDesignation == "HR" ? "" : "readonly") *@ />
+                            </td>
+
+                            <td>
+                                <input type="text"
+                                       class="form-control form-control-sm remark"
+                                       value="@item.REMARK" />
+                            </td>
+
+                            <td>
+                                @* HR *@
+                                @if (userDesignation == "HR" || userDesignation == "HEAD")
+                                {
+                                    if (item.STATUS == "pending")
+                                    {
+                                        <button class="btn btn-success btn-sm acceptBtn"
+                                                data-nextstatus="InProcess">
+                                            Accept
+                                        </button>
+                                        <button class="btn btn-danger btn-sm rejectBtn">
+                                            Reject
+                                        </button>
+                                    }
+                                    else if (item.STATUS == "inProcess")
+                                    {
+                                        <span class="badge bg-secondary">BOSS</span>
+                                        <button class="btn btn-danger btn-sm rejectBtn ms-2">
+                                            Reject
+                                        </button>
+                                    }
+                                }
+
+                                @* AGM *@
+                                else if ((userDesignation == "AGM"||userDesignation=="CONSULTANT") && item.STATUS == "inProcess")
+                                {
+                                    <button class="btn btn-success btn-sm acceptBtn"
+                                            data-nextstatus="Approved">
+                                        Accept
+                                    </button>
+                                    <button class="btn btn-danger btn-sm rejectBtn ms-2">
+                                        Reject
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+
+            </table>
+        </div>
+    </div>
+
+    <!-- Pending to Account -->
+    <div id="pendingAccountSection" class="d-none">
+        <h5 class="text-primary mt-4 mb-2">Pending to Account</h5>
+        <div class="table-responsive shadow-sm rounded">
+            <table class="table table-bordered table-hover text-center">
+                <thead class="table-warning">
+                    <tr>
+                        <th>Emp ID</th>
+                        <th>Emp Name</th>
+                        <th>Project Description</th>
+                        <th>Impress Amount</th>
+                        <th>Date Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var acc in pendingAccounts)
+                    {
+                        <tr>
+                            <td>@acc.EMP_ID</td>
+                            <td>@acc.EMP_NAME</td>
+                            <td>@acc.PROJECT_CODE</td>
+                            <td>@acc.IMPRESS_AMOUNT</td>
+                            <td>@acc.DATETIME?.ToString("dd-MM-yyyy HH:mm")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Approved to Account -->
+    <div id="approvedAccountSection" class="d-none">
+        <h5 class="text-success mt-4 mb-2">Approved to Account</h5>
+        <div class="table-responsive shadow-sm rounded">
+            <table class="table table-bordered table-hover text-center">
+                <thead class="table-success">
+                    <tr>
+                        <th>Emp ID</th>
+                        <th>Emp Name</th>
+                        <th>Project Description</th>
+                        <th> Amount</th>
+                        <th>Date Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var acc in approvedAccounts)
+                    {
+                        <tr>
+                            <td>@acc.EMP_ID</td>
+                            <td>@acc.EMP_NAME</td>
+                            <td>@acc.PROJECT_CODE</td>
+                            <td>@acc.ADVANCE_AMOUNT</td>
+                            <td>@acc.DATETIME?.ToString("dd-MM-yyyy HH:mm")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script>
+    $(document).ready(function () {
+
+        // Hide all sections initially
+        $('#hrApprovalSection, #pendingAccountSection, #approvedAccountSection').addClass('d-none');
+          $('#hrApprovalSection').removeClass('d-none');
+
+        // HR Approval Button
+        $('#hrApprovalBtn').click(() => {
+            $('#pendingAccountSection, #approvedAccountSection').addClass('d-none');
+            $('#hrApprovalSection').toggleClass('d-none'); // toggle visibility
+        });
+
+        // Pending Button
+        $('#pendingBtn').click(() => {
+            $('#hrApprovalSection, #approvedAccountSection').addClass('d-none');
+            $('#pendingAccountSection').toggleClass('d-none');
+        });
+
+        // Approved Button
+        $('#approvedBtn').click(() => {
+            $('#hrApprovalSection, #pendingAccountSection').addClass('d-none');
+            $('#approvedAccountSection').toggleClass('d-none');
+        });
+
+        // Accept button click
+        $('.acceptBtn').click(function () {
+            const confirmMessage = confirm("Do you really want to approve this record?");
+            if (!confirmMessage) return;
+
+            const row = $(this).closest('tr');
+            const id = row.data('id');
+            const advance = row.find('.advanceAmount').val();
+            const remark = row.find('.remark').val();
+
+
+            $.post('/EmployeeAccount/AcceptImpress', { id, advanceAmount: advance, remark, })
+                .done(res => {
+                    alert(res.message || "Approved successfully!");
+                    location.reload();
+                })
+                .fail(() => alert("Error occurred while approving."));
+        });
+
+        // Reject button click
+        $('.rejectBtn').click(function () {
+            const confirmMessage = confirm("Do you really want to reject this record?");
+            if (!confirmMessage) return;
+
+            const row = $(this).closest('tr');
+            const id = row.data('id');
+            const remark = row.find('.remark').val();
+
+            $.post('/EmployeeAccount/RejectImpress', { id, remark })
+                .done(res => {
+                    alert(res.message || "Rejected successfully!");
+                    location.reload();
+                })
+                .fail(() => alert("Error occurred while rejecting."));
+        });
+    });
+</script>

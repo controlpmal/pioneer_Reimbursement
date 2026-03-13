@@ -5,6 +5,7 @@
 
     // Get session claims
     var designationClaim = User.FindFirst("Designation")?.Value ?? "";
+    var loginEmpId = User.FindFirst("EmpID")?.Value ?? "";
 }
 
 <script>
@@ -14,6 +15,12 @@
         window.location.href = "/Home/Dashboard";
     }
 </script>
+@if (!(User.Identity?.IsAuthenticated ?? false))
+{
+    <script>
+        window.location.href = "/Home/Login";
+    </script>
+}
 
 <div class="container mt-4">
 
@@ -36,7 +43,7 @@
             <i class="bi bi-pencil-square"></i> Account Entry Form
         </div>
         <div class="card-body">
-            <form asp-action="Create" method="post">
+            <form asp-action="Create" method="post" id="accountEntryForm">
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Employee ID</label>
@@ -45,21 +52,22 @@
 
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Employee Name</label>
-                        <input asp-for="EMP_NAME" class="form-control" id="empName" readonly />
+                        <input asp-for="EMP_NAME" class="form-control" id="empName" readonly value="" />
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Advance Amount</label>
+                        <label class="form-label fw-semibold">Amount</label>
                         <input type="number" asp-for="ADVANCE_AMOUNT" class="form-control" id="advanceAmount" value="0" />
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Payment Type</label>
+                        <label class="form-label fw-semibold">Bill Type</label>
                         <select asp-for="PAYMENT_TYPE" class="form-select" id="paymentType" required>
                             <option value="">-- Select --</option>
                             <option value="IMPRESS">IMPRESS</option>
-                            <option value="BILL">BILL</option>
-                            <option value="BILL APPROVAL">BILL APPROVAL</option>
+                            <option value="BILL">BILL APPROVED</option>
+                            <option value="BILL APPROVAL">BILL BALANCE PAYMENT</option>
+                            <option value="SALARY">SALARY</option>
                         </select>
                     </div>
 
@@ -69,8 +77,8 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Approval Employee</label>
-                        <input asp-for="APPROVAL_EMP" class="form-control" required />
+                        <label class="form-label fw-semibold">Approval Employee ID</label>
+                        <input asp-for="APPROVAL_EMP" class="form-control" required value=@loginEmpId readonly />
                     </div>
                 </div>
 
@@ -98,10 +106,10 @@
                         <tr>
                             <th>Employee ID</th>
                             <th>Name</th>
-                            <th>Advance Amount</th>
-                            <th>Payment Type</th>
+                            <th>Amount</th>
+                            <th>Type</th>
                             <th>Date & Time</th>
-                            <th>Approval Employee</th>
+                            <th>Approval Employee ID</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -165,4 +173,24 @@
             box.className = "badge fs-6 bg-secondary px-3 py-2";
         }
     }
+</script>
+<script>
+    document.getElementById("accountEntryForm").addEventListener("submit", function (e) {
+        e.preventDefault(); // Stop normal submit
+
+        Swal.fire({
+            title: 'Confirm Submission',
+            text: 'Are you sure you want to submit this account entry?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#198754',
+            cancelButtonColor: '#dc3545',
+            confirmButtonText: 'Yes, Submit',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                this.submit(); // Submit form if OK
+            }
+        });
+    });
 </script>

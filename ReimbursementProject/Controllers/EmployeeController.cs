@@ -1,36 +1,55 @@
-﻿using Microsoft.AspNetCore.Mvc;
-
-using System.Collections.Generic;
-using Microsoft.EntityFrameworkCore;
-using ReimbursementProject.Data;
-using ReimbursementProject.Models;
-using System.Text.Json;
+﻿using MailKit.Net.Smtp;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity.Data;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.VisualStudio.Web.CodeGenerators.Mvc.Templates.BlazorIdentity.Pages.Manage;
+using MimeKit;
+using Org.BouncyCastle.Ocsp;
+using ReimbursementProject.Data;
+using ReimbursementProject.Hubs;
+using ReimbursementProject.Models;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using MimeKit;
-using MailKit.Net.Smtp;
-using Microsoft.Extensions.Options;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using static System.Net.WebRequestMethods;
 
 namespace ReimbursementProject.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+
+  
     public class EmployeeController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly StoreAppDbContext _storecontext;
         private readonly EmailSettings _emailSettings;
-        public EmployeeController(ApplicationDbContext context, IOptions<EmailSettings> emailSettings)
+        public EmployeeController(
+        ApplicationDbContext context,
+        StoreAppDbContext storecontext,
+        IOptions<EmailSettings> emailSettings,
+        IHubContext<NotificationHub> hubContext)
         {
             _context = context;
+            _storecontext = storecontext;
             _emailSettings = emailSettings.Value;
+            _hubContext = hubContext;
         }
 
+        private readonly IHubContext<NotificationHub> _hubContext;
 
+       
+           
+        
 
         // ✅ GET: /api/MasterData/employees
         [HttpGet("employees1")]
@@ -65,21 +84,39 @@ namespace ReimbursementProject.Controllers
     new Claim("EmpName", employee.EmpName ?? string.Empty),
     new Claim("Level", employee.Level ?? string.Empty),
     new Claim("Designation", employee.Designation ?? string.Empty),
-    new Claim("IRB", employee.IRB ?? string.Empty)
+    new Claim("IRB", employee.IRB ?? string.Empty),
+     new Claim("CompanyLocation",employee.CompanyLocation??string.Empty)
 };
 
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var principal = new ClaimsPrincipal(identity);
 
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal,
-                new AuthenticationProperties { IsPersistent = false, ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(30) });
+                new AuthenticationProperties { IsPersistent = true, ExpiresUtc = DateTimeOffset.UtcNow.AddDays(14) });
             
             // Optionally also set small server session values (not required):
             HttpContext.Session.SetString("EmpID", employee.EmpID);
-            
-         
 
-            return Ok(new { success = true, redirectUrl = Url.Action("Index", "Home") });
+            // 🔔 Send notification to all connected browsers
+            await _hubContext.Clients.All.SendAsync("ReceiveNotification",
+                $"👋 {employee.EmpName} has logged in successfully!");
+            _context.Notifications.Add(new Notification
+            {
+                EmpID = employee.EmpID, // or based on designation
+                Title = "New Login",
+                Message = "New user login",
+                Type = "Login"
+            });
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true, redirectUrl = Url.Action("Dashboard", "Home") });
+        }
+
+        [HttpGet("test-notify")]
+        public async Task<IActionResult> TestNotify()
+        {
+            await _hubContext.Clients.All.SendAsync("ReceiveNotification", "🔔 Test notification from server!");
+            return Ok("Notification sent!");
         }
 
         [HttpPost("Logout")]
@@ -237,54 +274,101 @@ namespace ReimbursementProject.Controllers
         [HttpPost("Register")]
         public async Task<IActionResult> Register([FromBody] EmployeeDetails emp)
         {
-            if (await _context.EmployeeDetails.AnyAsync(e => e.EmpID == emp.EmpID))
-                return BadRequest(new { message = "EmpID already exists" });
+            try
+            {
+                if (await _context.EmployeeDetails.AnyAsync(e => e.EmpID == emp.EmpID))
+                    return BadRequest(new { message = "EmpID already exists" });
 
-            emp.Status = null; // Default: waiting for HR approval
-            _context.EmployeeDetails.Add(emp);
-            await _context.SaveChangesAsync();
+                if (await _context.EmployeeDetails.AnyAsync(e => e.MailID == emp.MailID))
+                    return BadRequest(new { message = "Email already registered" });
 
-            return Ok(new { message = "Registration successful. Waiting for HR approval" });
+                /*emp.Status = null;*/ // Default: waiting for HR approval
+
+                _context.EmployeeDetails.Add(emp);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Registration successful. Waiting for HR approval" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Error saving data", error = ex.InnerException?.Message ?? ex.Message });
+            }
         }
 
 
 
-        //[HttpGet("send")]
-        //public IActionResult SendOtp(string toEmail)
-        //{
-        //    try
-        //    {
-        //        // Generate OTP
-        //        Random random = new Random();
-        //        string otp = random.Next(1000, 9999).ToString();
 
-        //        // Create email
-        //        var emailMessage = new MimeMessage();
-        //        emailMessage.From.Add(new MailboxAddress("PMAL Control", _emailSettings.Email));
-        //        emailMessage.To.Add(new MailboxAddress("", toEmail));
-        //        emailMessage.Subject = "Your OTP Code";
-        //        emailMessage.Body = new TextPart("plain")
-        //        {
-        //            Text = $"Hello,\n\nYour OTP is: {otp}\n\nRegards,\nPMAL Control"
-        //        };
+        [HttpGet("send")]
+        public IActionResult SendOtp(string toEmail)
+        {
+            try
+            {
+                // Generate OTP
+                Random random = new Random();
+                string otp = random.Next(1000, 9999).ToString();
 
-        //        // Send email
-        //        using (var client = new SmtpClient())
-        //        {
-        //            client.Connect("smtp.gmail.com", 587, MailKit.Security.SecureSocketOptions.StartTls);
-        //            client.Authenticate(_emailSettings.Email, _emailSettings.Password);
-        //            client.Send(emailMessage);
-        //            client.Disconnect(true);
-        //        }
+                // Create email
+                var emailMessage = new MimeMessage();
+                emailMessage.From.Add(new MailboxAddress("PMAL Control", _emailSettings.Email));
+                emailMessage.To.Add(new MailboxAddress("", toEmail));
+                emailMessage.Subject = "Your OTP Code";
+                emailMessage.Body = new TextPart("plain")
+                {
+                    Text = $"Hello,\n\nYour OTP is: {otp}\n\nRegards,\nPMAL Control"
+                };
 
-        //        return Ok(new { Success = true, OTP = otp, Message = "OTP sent successfully!" });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(new { Success = false, Message = ex.Message });
-        //    }
-        //}
+                // Send email
+                using (var client = new SmtpClient())
+                {
+                    client.Connect("smtp.gmail.com", 587, MailKit.Security.SecureSocketOptions.StartTls);
+                    client.Authenticate(_emailSettings.Email, _emailSettings.Password);
+                    client.Send(emailMessage);
+                    client.Disconnect(true);
+                }
 
+                return Ok(new { Success = true, OTP = otp, Message = "OTP sent successfully!" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Success = false, Message = ex.Message });
+            }
+        }
+
+
+        [HttpPost("newName")]
+        public IActionResult ChangePassword(string newName)
+        {
+
+            var empId = User.FindFirst("EmpID")?.Value;
+            var storeemployee = _storecontext.Employees.FirstOrDefault(e => e.UserName == empId);
+
+            var employee = _context.EmployeeDetails
+                .FirstOrDefault(e => e.EmpID == empId);
+
+            if (employee == null)
+                return NotFound();
+
+
+            // 🔐 Ideally hash the password
+            employee.EmpName = newName;
+            if (storeemployee == null)
+            {
+
+            }
+            else
+            {
+                storeemployee.FullName = newName;
+                _storecontext.SaveChanges();
+            }
+
+
+
+            _context.SaveChanges();
+
+
+
+            return Ok(new { message = "name change succeffuly" });
+        }
 
 
 
@@ -307,13 +391,13 @@ namespace ReimbursementProject.Controllers
             public int? FileIndex { get; set; } // maps to file_i in form data
         }
 
-
         [HttpPost("submit")]
-        [RequestSizeLimit(20 * 1024 * 1024)] // allow up to 20MB total
-        public IActionResult Submit()
+        [RequestSizeLimit(500 * 1024 * 1024)]
+        public async Task<IActionResult> Submit()
         {
             var form = Request.Form;
             var empId = form["EmpID"].ToString();
+            var empName = User.FindFirst("EmpName")?.Value;
             var site = form["SiteName"].ToString();
             var project = form["ProjectCode"].ToString();
             var level = form["Level"].ToString();
@@ -334,55 +418,80 @@ namespace ReimbursementProject.Controllers
                 return BadRequest(new { success = false, message = "Invalid rows JSON" });
             }
 
-            // ✅ Create ExpenseBillBook (header entry)
+            // Create master bill
             var now = DateTime.Now;
             var expenseBill = new ExpenseBillBook
             {
-                ExpenseBillNumber = $"EBL{empId}{now:yyyyMMddHHmmss}", // EBL + EmpID + timestamp till seconds
+                ExpenseBillNumber = $"EBL{empId}{now:yyyyMMddHHmmss}",
                 SubmissionDate = now,
                 Status = "Pending"
             };
 
             _context.ExpenseBillBook.Add(expenseBill);
-            _context.SaveChanges(); // save once so ExpenseID is generated
+            await _context.SaveChangesAsync();
 
+            // Process each row
             foreach (var r in rows)
             {
+                // Parse date
+                DateTime? expenseDate = null;
+                if (!string.IsNullOrWhiteSpace(r.DateOfExpense))
+                {
+                    string[] formats = { "dd/MM/yyyy", "MM/dd/yyyy", "yyyy-MM-dd", "dd-MM-yyyy" };
+                    if (DateTime.TryParseExact(r.DateOfExpense, formats,
+                        CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
+                    {
+                        expenseDate = parsed;
+                    }
+                    else if (DateTime.TryParse(r.DateOfExpense, out var fallback))
+                    {
+                        expenseDate = fallback;
+                    }
+                }
+
                 var el = new ExpenseLogBook
                 {
                     SiteName = site,
                     ProjectCode = project,
                     EmpID = empId,
                     SubmissionDate = now,
-                    DateofExpense = DateTime.TryParse(r.DateOfExpense, out var dt) ? dt : (DateTime?)null,
+                    DateofExpense = expenseDate,
                     TypeOfExpense = r.TypeOfExpense,
                     Quantity = r.Quantity,
-                    TravelLocation=r.TravelLocation,
+                    TravelLocation = r.TravelLocation,
                     FellowMembers = r.FellowMembers,
                     ClaimAmount = r.ClaimAmount,
                     IRB = irb,
-                    Status = "0", // pending
-                    RequireSpecialApproval = (r.ClaimAmount > (r.SanctionedAmount ?? 0)) ? "true" : "false",
+                    Status = "5",
+                    //RequireSpecialApproval = (r.ClaimAmount > (r.SanctionedAmount ?? 0)) ? "true" : "false",
                     Rejection = null,
-                    ExpenseID = expenseBill.ExpenseID  // ✅ link with parent
+                    ExpenseID = expenseBill.ExpenseID,
+                    //SanctionedAmount = (r.ClaimAmount > (r.SanctionedAmount ?? 0))
+                    //                    ? r.SanctionedAmount
+                    //                    : r.ClaimAmount
                 };
 
-                // Handle file if exists
+                // File Upload
                 if (r.FileIndex != null)
                 {
                     var fileKey = $"file_{r.FileIndex}";
                     var file = Request.Form.Files.FirstOrDefault(f => f.Name == fileKey);
+
                     if (file != null && file.Length > 0)
                     {
                         using var ms = new MemoryStream();
-                        file.CopyTo(ms);
-                        el.BillDocument = ms.ToArray();
-                        el.BillFileName = file.FileName;
-                        el.BillContentType = file.ContentType;
+                        await file.CopyToAsync(ms);
+                        byte[] fileBytes = ms.ToArray();
+
+                        if (fileBytes.Length > 1 * 1024 * 1024)
+                            fileBytes = CompressFile(fileBytes, file.FileName);
+
+                        el.BillDocument = fileBytes;
+                        el.BillFileName = file.FileName ?? "captured_file";
+                        el.BillContentType = file.ContentType ?? "application/octet-stream";
                     }
                 }
-
-                // Recompute sanctioned amount (server-side safe check)
+                // ✅ Compute sanctioned amount
                 double computedSanctioned = 0;
                 var limitRow = _context.ExpenseLimitDetails
                                        .FirstOrDefault(x => x.Level == level && x.TypeOfExpense == r.TypeOfExpense);
@@ -398,16 +507,87 @@ namespace ReimbursementProject.Controllers
                                 || (r.TypeOfExpense ?? "").ToUpper().Contains("TRAVEL CAR");
                 if (isTravel) computedSanctioned = (r.KM ?? 0) * maxLimit;
                 else computedSanctioned = (r.Quantity ?? 0) * maxLimit;
+                int computedSanctionedInt = (int)Math.Floor(computedSanctioned);
+                if (computedSanctionedInt == null)
+                {
+                    computedSanctionedInt = 0;
+                }
+                el.SanctionedAmount = (r.ClaimAmount > (computedSanctionedInt))
+                                        ? computedSanctionedInt
+                                        : r.ClaimAmount;
+                el.RequireSpecialApproval = (r.ClaimAmount > (computedSanctionedInt)) ? "true" : "false";
 
-                el.SanctionedAmount = computedSanctioned;
+
 
                 _context.ExpenseLogBook.Add(el);
             }
 
-            _context.SaveChanges();
+            _context.Notifications.Add(new Notification
+            {
+                EmpID = empId,
+                Title = "New bill",
+                Message = "New bill filled ",
+                Type = "reimbursement bill"
+            });
+            await _context.SaveChangesAsync();
+
+          
 
             return Ok(new { success = true, billNo = expenseBill.ExpenseBillNumber });
         }
+
+
+
+        private byte[] CompressFile(byte[] fileBytes, string fileName)
+        {
+            try
+            {
+                // Get file extension
+                string ext = Path.GetExtension(fileName)?.ToLower() ?? "";
+
+                // ✅ Handle images (JPG, PNG, JPEG)
+                if (ext == ".jpg" || ext == ".jpeg" || ext == ".png")
+                {
+                    using var input = new MemoryStream(fileBytes);
+                    using var output = new MemoryStream();
+                    using (var image = System.Drawing.Image.FromStream(input))
+                    {
+                        var encoder = GetEncoder(System.Drawing.Imaging.ImageFormat.Jpeg);
+                        var encoderParams = new System.Drawing.Imaging.EncoderParameters(1);
+                        encoderParams.Param[0] = new System.Drawing.Imaging.EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 60L); // 60% quality
+                        image.Save(output, encoder, encoderParams);
+                    }
+                    return output.ToArray();
+                }
+
+                //// ✅ Handle PDF / Excel — compress using GZip
+                //if (ext == ".pdf" || ext == ".xls" || ext == ".xlsx")
+                //{
+                //    using var input = new MemoryStream(fileBytes);
+                //    using var output = new MemoryStream();
+                //    using (var gzip = new System.IO.Compression.GZipStream(output, System.IO.Compression.CompressionLevel.Optimal))
+                //    {
+                //        input.CopyTo(gzip);
+                //    }
+                //    return output.ToArray();
+                //}
+
+                // Default — no compression
+                return fileBytes;
+            }
+            catch
+            {
+                // In case compression fails, return original file
+                return fileBytes;
+            }
+        }
+
+        private static System.Drawing.Imaging.ImageCodecInfo GetEncoder(System.Drawing.Imaging.ImageFormat format)
+        {
+            return System.Drawing.Imaging.ImageCodecInfo.GetImageDecoders()
+                .FirstOrDefault(c => c.FormatID == format.Guid);
+        }
+
 
 
         [HttpGet("new")]
@@ -422,7 +602,8 @@ namespace ReimbursementProject.Controllers
                     empDesignation=e.Designation,
                     empIrb=e.IRB,
                     empDepartment=e.Dept,
-                    //empMail = e.MailID, // ⬅️ Add this line
+                    empMail = e.MailID,
+                    empLocation=e.CompanyLocation,  // ⬅️ Add this line
                     photoUrl = "/uploads/employees/" + e.EmpID + ".jpg" // store photos with EmpID.jpg
                 })
                 .ToList();
@@ -442,11 +623,48 @@ namespace ReimbursementProject.Controllers
             emp.Level = updatedEmp.Level;
             emp.Designation = updatedEmp.Designation;
             emp.Dept = updatedEmp.Dept;
-            //emp.MailID = updatedEmp.MailID; // ⬅️ Add this line
+            emp.CompanyLocation= updatedEmp.CompanyLocation;
+            
+            var toEmail = emp.MailID;// ⬅️ Add this line
+
+            // Create email
+            var emailMessage = new MimeMessage();
+            emailMessage.From.Add(new MailboxAddress("PMAL Control", _emailSettings.Email));
+            emailMessage.To.Add(new MailboxAddress("", toEmail));
+            emailMessage.Subject = "Reimbursement Approvel";
+            emailMessage.Body = new TextPart("plain")
+            {
+                Text = $"Hello,\n\n Approved from HR to access the reimbursment website\n\nRegards,\nPMAL Control"
+            };
+
+            // Send email
+            using (var client = new SmtpClient())
+            {
+                client.Connect("smtp.gmail.com", 587, MailKit.Security.SecureSocketOptions.StartTls);
+                client.Authenticate(_emailSettings.Email, _emailSettings.Password);
+                client.Send(emailMessage);
+                client.Disconnect(true);
+            }
 
             // Approve employee
             emp.Status = "OK";
+            // 🔹 6. Add record in Store DB
+            var storeEmp = new StoreEmployeeDetails
+            {
+                UserName = emp.EmpID,               // Username = EmpID
+                Password = emp.Password,            // Assuming `Password` exists in your EmployeeDetails model
+                FullName = emp.EmpName,             // Full name from main table
+                Department = emp.Dept,
+                IRB = emp.IRB,// Department
+                Role = "Employee" ,
+                Level=emp.Level// Default role
+            };
+           
 
+          
+
+            _storecontext.Employees.Add(storeEmp);
+            _storecontext.SaveChanges();
             _context.SaveChanges();
             return Ok(new { success = true, message = "Employee approved and updated successfully" });
         }
@@ -460,11 +678,40 @@ namespace ReimbursementProject.Controllers
         }
 
         // Delete employee
+        // Delete employee
         [HttpDelete("{empId}")]
         public IActionResult DeleteEmployee(string empId)
         {
             var emp = _context.EmployeeDetails.FirstOrDefault(e => e.EmpID == empId);
             if (emp == null) return NotFound();
+
+            var employee = emp.EmpID;
+            var employeename = emp.EmpName;
+            var toEmail = emp.MailID;
+            // Create email
+            if (!toEmail.IsNullOrEmpty())
+            {
+                var emailMessage = new MimeMessage();
+                emailMessage.From.Add(new MailboxAddress("PMAL Control", _emailSettings.Email));
+                emailMessage.To.Add(new MailboxAddress("", toEmail));
+                emailMessage.Subject = "Reject & Delete ";
+                emailMessage.Body = new TextPart("plain")
+                {
+                    Text = $"Hello,\n\n Rejected from HR department whose empid is {employee} and name is {employeename}\n\nRegards,\nPMAL Control"
+                };
+
+                // Send email
+                using (var client = new SmtpClient())
+                {
+                    client.Connect("smtp.gmail.com", 587, MailKit.Security.SecureSocketOptions.StartTls);
+                    client.Authenticate(_emailSettings.Email, _emailSettings.Password);
+                    client.Send(emailMessage);
+                    client.Disconnect(true);
+                }
+            }
+           
+
+
 
             _context.EmployeeDetails.Remove(emp);
             _context.SaveChanges();
@@ -486,7 +733,8 @@ namespace ReimbursementProject.Controllers
             emp.Dept = updated.Dept;
             emp.AdvanceAmount = updated.AdvanceAmount;
             emp.Password = updated.Password;
-            //emp.MailID = updated.MailID;
+            emp.MailID = updated.MailID;
+            emp.CompanyLocation = updated.CompanyLocation;
 
             _context.SaveChanges();
 
@@ -500,6 +748,9 @@ namespace ReimbursementProject.Controllers
             if (string.IsNullOrEmpty(empId) || string.IsNullOrEmpty(typeOfExpense))
                 return BadRequest(new { success = false, message = "Invalid input" });
 
+            
+
+
             var duplicate = _context.ExpenseLogBook
                 .Where(e => e.DateofExpense.HasValue
                             && e.DateofExpense.Value.Date == dateOfExpense.Date
@@ -508,7 +759,7 @@ namespace ReimbursementProject.Controllers
                                 e.EmpID == empId ||
                                 (e.FellowMembers != null && e.FellowMembers.Contains(empId))
                                )
-                       )
+                     )
                 .FirstOrDefault();
 
             if (duplicate != null)
@@ -519,86 +770,189 @@ namespace ReimbursementProject.Controllers
 
 
 
-        //[HttpPost("forgot-password")]
-        //public IActionResult ForgotPassword([FromBody] string empId)
-        //{
-        //    var employee = _context.EmployeeDetails.FirstOrDefault(e => e.EmpID == empId);
-        //    if (employee == null || string.IsNullOrWhiteSpace(employee.MailID))
-        //        return NotFound(new { success = false, message = "Employee not found or email not available." });
+        [HttpPost("forgot-password")]
+        public IActionResult ForgotPassword([FromBody] string empId)
+        {
+            var employee = _context.EmployeeDetails.FirstOrDefault(e => e.EmpID == empId);
+            if (employee == null || string.IsNullOrWhiteSpace(employee.MailID))
+                return NotFound(new { success = false, message = "Employee not found or email not available." });
 
-        //    // Reuse your SendOtp logic
-        //    Random random = new Random();
-        //    string otp = random.Next(1000, 9999).ToString();
+            // Reuse your SendOtp logic
+            Random random = new Random();
+            string otp = random.Next(1000, 9999).ToString();
 
-        //    try
-        //    {
-        //        var emailMessage = new MimeMessage();
-        //        emailMessage.From.Add(new MailboxAddress("PMAL Control", "pmalcontrol@gmail.com"));
-        //        emailMessage.To.Add(new MailboxAddress("", employee.MailID));
-        //        emailMessage.Subject = "Your OTP Code";
-        //        emailMessage.Body = new TextPart("plain")
-        //        {
-        //            Text = $"Hello {employee.EmpName},\n\nYour OTP is: {otp}\n\nRegards,\nPMAL Control"
-        //        };
+            try
+            {
+                var emailMessage = new MimeMessage();
+                emailMessage.From.Add(new MailboxAddress("PMAL Control", "pmalcontrol@gmail.com"));
+                emailMessage.To.Add(new MailboxAddress("", employee.MailID));
+                emailMessage.Subject = "Your OTP Code";
+                emailMessage.Body = new TextPart("plain")
+                {
+                    Text = $"Hello {employee.EmpName},\n\nYour OTP is: {otp}\n\nRegards,\nPMAL Control"
+                };
 
-        //        using (var client = new SmtpClient())
-        //        {
-        //            client.Connect("smtp.gmail.com", 587, MailKit.Security.SecureSocketOptions.StartTls);
-        //            client.Authenticate(_emailSettings.Email, _emailSettings.Password);
-        //            client.Send(emailMessage);
-        //            client.Disconnect(true);
-        //        }
+                using (var client = new SmtpClient())
+                {
+                    client.Connect("smtp.gmail.com", 587, MailKit.Security.SecureSocketOptions.StartTls);
+                    client.Authenticate(_emailSettings.Email, _emailSettings.Password);
+                    client.Send(emailMessage);
+                    client.Disconnect(true);
+                }
 
-        //        // Store OTP in TempData / Memory / Cache / or return it for now (not safe for production)
-        //        HttpContext.Session.SetString("ResetOtp", otp);
-        //        HttpContext.Session.SetString("ResetEmpId", empId);
+                // Store OTP in TempData / Memory / Cache / or return it for now (not safe for production)
+                HttpContext.Session.SetString("ResetOtp", otp);
+                HttpContext.Session.SetString("ResetEmpId", empId);
 
-        //        return Ok(new { success = true, message = "OTP sent to your registered email." });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(new { success = false, message = ex.Message });
-        //    }
-        //}
-
-
-
-        //[HttpPost("verify-otp")]
-        //public IActionResult VerifyOtp([FromBody] string enteredOtp)
-        //{
-        //    var storedOtp = HttpContext.Session.GetString("ResetOtp");
-        //    if (storedOtp == enteredOtp)
-        //    {
-        //        return Ok(new { success = true, message = "OTP verified" });
-        //    }
-
-        //    return BadRequest(new { success = false, message = "Invalid OTP" });
-        //}
+                return Ok(new { success = true, message = "OTP sent to your registered email." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
 
 
-        //[HttpPost("reset-password")]
-        //public IActionResult ResetPassword([FromBody] PasswordResetModel model)
-        //{
-        //    var empId = HttpContext.Session.GetString("ResetEmpId");
-        //    if (string.IsNullOrEmpty(empId)) return Unauthorized();
 
-        //    var emp = _context.EmployeeDetails.FirstOrDefault(e => e.EmpID == empId);
-        //    if (emp == null) return NotFound(new { success = false, message = "Employee not found" });
+        [HttpPost("verify-otp")]
+        public IActionResult VerifyOtp([FromBody] string enteredOtp)
+        {
+            var storedOtp = HttpContext.Session.GetString("ResetOtp");
+            if (storedOtp == enteredOtp)
+            {
+                return Ok(new { success = true, message = "OTP verified" });
+            }
 
-        //    emp.Password = model.NewPassword;
-        //    _context.SaveChanges();
+            return BadRequest(new { success = false, message = "Invalid OTP" });
+        }
 
-        //    HttpContext.Session.Remove("ResetEmpId");
-        //    HttpContext.Session.Remove("ResetOtp");
 
-        //    return Ok(new { success = true, message = "Password updated successfully" });
-        //}
+        [HttpPost("reset-password")]
+        public IActionResult ResetPassword([FromBody] PasswordResetModel model)
+        {
+            try
+            {
+                var empId = HttpContext.Session.GetString("ResetEmpId");
+                if (string.IsNullOrEmpty(empId)) return Unauthorized();
 
-        //public class PasswordResetModel
-        //{
-        //    public string NewPassword { get; set; }
-        //}
+                var emp = _context.EmployeeDetails.FirstOrDefault(e => e.EmpID == empId);
+                if (emp == null) return NotFound(new { success = false, message = "Employee not found" });
+                var storeEmp = _storecontext.Employees.FirstOrDefault(e => e.UserName == empId);
+                emp.Password = model.NewPassword;
+                storeEmp.Password = model.NewPassword;
+                _storecontext.SaveChanges();
+                _context.SaveChanges();
 
+                HttpContext.Session.Remove("ResetEmpId");
+                HttpContext.Session.Remove("ResetOtp");
+
+                return Ok(new { success = true, message = "Password updated successfully" });
+            }
+            catch
+            {
+                return BadRequest( "Some data were missing ");
+            }
+          
+        }
+
+        public class PasswordResetModel
+        {
+            public string NewPassword { get; set; }
+        }
+
+
+
+        [HttpGet("pendingEmployeeAmount")]
+        public IActionResult GetEmployeePendingAmount()
+        {
+            var data = _context.ExpenseLogBook
+                .AsEnumerable() // switch to in-memory
+                .Where(x =>
+                    !string.IsNullOrEmpty(x.Status) &&
+                    x.Rejection != "reject" &&
+                    int.TryParse(x.Status, out int statusValue) &&
+                    statusValue > 0 &&
+                    statusValue < 4
+                )
+                .Join(_context.EmployeeDetails,
+                      expense => expense.EmpID,
+                      emp => emp.EmpID,
+                      (expense, emp) => new { expense, emp })
+                .GroupBy(x => new { x.expense.EmpID, x.emp.EmpName })
+                .Select(g => new EmployeePendingAmountDto
+                {
+                    EmpID = g.Key.EmpID,
+                    EmpName = g.Key.EmpName,
+                    TotalClaimAmount = g.Sum(x => x.expense.ClaimAmount ?? 0)
+                })
+                .ToList();
+
+            return Ok(data);
+        }
+
+
+        public class EmployeePendingAmountDto
+        {
+            public string EmpID { get; set; }
+            public string EmpName { get; set; }   // 👈 Add this
+            public double TotalClaimAmount { get; set; }
+        }
+
+        [HttpGet("projectAmount")]
+        public IActionResult ProjectAmount()
+        {
+            var regex = new Regex(@"\b\d{5}\b"); // Match exactly 5 digit integer
+
+            var data = _context.ExpenseLogBook
+                .AsEnumerable()
+                .Where(x => x.Status == "4")
+                .Select(x =>
+                {
+                    string code = null;
+
+                    // Check ProjectCode first
+                    if (!string.IsNullOrEmpty(x.ProjectCode))
+                    {
+                        var match = regex.Match(x.ProjectCode);
+                        if (match.Success)
+                            code = match.Value;
+                    }
+
+                    // If not found, check TravelLocation
+                    if (code == null && !string.IsNullOrEmpty(x.TravelLocation))
+                    {
+                        var match = regex.Match(x.TravelLocation);
+                        if (match.Success)
+                            code = match.Value;
+                    }
+
+                    // If still null → assign OTHER
+                    if (string.IsNullOrEmpty(code))
+                        code = "OTHER";
+
+                    return new
+                    {
+                        Code = code,
+                        SanctionedAmount = x.SanctionedAmount ?? 0
+                    };
+                })
+                .GroupBy(x => x.Code)
+                .Select(g => new ProjectSanctionedAmountDto
+                {
+                    Code = g.Key,
+                    TotalSanctionedAmount = g.Sum(x => x.SanctionedAmount)
+                })
+                .OrderByDescending(x => x.TotalSanctionedAmount)
+                .ToList();
+
+            return Ok(data);
+        }
+
+        public class ProjectSanctionedAmountDto
+        {
+            public string Code { get; set; }
+            public double TotalSanctionedAmount { get; set; }
+        }
 
 
     }

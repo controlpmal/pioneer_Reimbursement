@@ -1,0 +1,97 @@
+﻿@{
+    ViewData["Title"] = "Project Sanctioned Amount";
+}
+
+<style>
+    body {
+        background-color: #f4f6f9;
+    }
+
+    .project-card {
+        border: none;
+        border-radius: 15px;
+        transition: 0.3s;
+        background: linear-gradient(135deg, #1cc88a, #13855c);
+        color: white;
+    }
+
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+    .code-text {
+        font-size: 20px;
+        font-weight: bold;
+    }
+
+    .amount-text {
+        font-size: 24px;
+        font-weight: bold;
+    }
+
+    .summary-box {
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+</style>
+
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>Project Sanctioned Amount</h3>
+        <div class="summary-box">
+            Total Projects: <span id="totalProjects">0</span>
+        </div>
+    </div>
+
+    <div id="loader" class="text-center my-5">
+        <div class="spinner-border text-success"></div>
+    </div>
+
+    <div class="row" id="projectContainer">
+        <!-- Cards will load here -->
+    </div>
+
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        axios.get('/api/employee/projectAmount')
+            .then(response => {
+
+                const data = response.data;
+
+                document.getElementById("loader").style.display = "none";
+                document.getElementById("totalProjects").innerText = data.length;
+
+                let html = '';
+
+                data.forEach(item => {
+                    html += `
+                        <div class="col-md-4 mb-4">
+                            <div class="card project-card p-4">
+                                <div class="code-text">
+                                    Project Code: ${item.code}
+                                </div>
+                                <div class="amount-text mt-3">
+                                    ₹ ${item.totalSanctionedAmount.toLocaleString()}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                document.getElementById("projectContainer").innerHTML = html;
+
+            })
+            .catch(error => {
+                document.getElementById("loader").style.display = "none";
+                alert("Failed to load project data.");
+            });
+
+    });
+</script>

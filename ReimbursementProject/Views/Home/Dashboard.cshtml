@@ -2,17 +2,15 @@
 @{
     ViewData["Title"] = "Dashboard";
 
-    // ✅ Get values from Claims
     var empid = User.FindFirst("EmpID")?.Value ?? "";
     var designation = User.FindFirst("Designation")?.Value ?? "";
 }
 
 @if (!(User.Identity?.IsAuthenticated ?? false))
 {
-    <script>
-        window.location.href = "/Home/Login";
-    </script>
+    <script>window.location.href = "/Home/Login";</script>
 }
+
 <!-- Loader Overlay -->
 <div id="loadingOverlay" class="loading-overlay">
     <div class="loading-box">
@@ -21,209 +19,487 @@
     </div>
 </div>
 
-
 <div class="container mt-5">
-    <div class="row text-center">
-        <!-- Pending Card -->
-        <div class="col-md-4">
-            <a href="/Home/Details?type=pending" class="text-decoration-none">
-                <div class="card dashboard-card bg-warning text-white shadow-lg">
+
+    @* new year card *@
+   @*  <div class="new-year-banner  text-center mb-5">
+        <h1>🎉 Happy New Year 2026 🎉</h1>
+        <p>Wishing you success, growth & happiness</p>
+    </div> *@
+    <div class="row g-4 text-center">
+
+        <!-- Checked (Now Blue) -->
+        <div class="col-md-3 col-sm-6">
+            <a href="/Home/Details?type=checked" class="text-decoration-none">
+                <div class="card border-checked text-checked hover-card">
                     <div class="card-body">
-                        <h3 class="card-title">Pending</h3>
+                        <h4 class="fw-bold">Check and final submit</h4>
+                        <h1 id="checkedCount">0</h1>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Pending -->
+        <div class="col-md-3 col-sm-6">
+            <a href="/Home/Details?type=pending" class="text-decoration-none">
+                <div class="card border-warning text-warning hover-card">
+                    <div class="card-body">
+                        <h4 class="fw-bold">Pending</h4>
                         <h1 id="pendingCount">0</h1>
                     </div>
                 </div>
             </a>
         </div>
 
-        <!-- Approved Card -->
-        <div class="col-md-4">
-            <a href="/Home/Details?type=approved">
-                <div class="card dashboard-card bg-success text-white shadow-lg">
+        <!-- Approved -->
+        <div class="col-md-3 col-sm-6">
+            <a href="/Home/Details?type=approved" class="text-decoration-none">
+                <div class="card border-success text-success hover-card">
                     <div class="card-body">
-                        <h3 class="card-title">Approved</h3>
+                        <h4 class="fw-bold">Approved</h4>
                         <h1 id="approvedCount">0</h1>
                     </div>
                 </div>
             </a>
         </div>
 
-        <!-- Rejected Card -->
-        <div class="col-md-4">
-            <a href="/Home/Details?type=rejected">
-                <div class="card dashboard-card bg-danger text-white shadow-lg">
+        <!-- Rejected -->
+        <div class="col-md-3 col-sm-6">
+            <a href="/Home/Details?type=rejected" class="text-decoration-none">
+                <div class="card border-danger text-danger hover-card">
                     <div class="card-body">
-                        <h3 class="card-title">Rejected</h3>
+                        <h4 class="fw-bold">Rejected</h4>
                         <h1 id="rejectedCount">0</h1>
                     </div>
                 </div>
             </a>
         </div>
+
     </div>
 
-    <!-- Extra cards only for HR -->
-    <div class="row text-center mt-4" id="hrCards" style="display:none;">
-        <!-- New Employee Requests (Vertical Name List) -->
-        <div class="col-md-6">
+    @* accoun card *@
+
+
+    <div class="row g-4 text-center mt-4" id="accountCard" style="display:none;">
+        <div class="col-lg-6 col-sm-12">
+            <a href="/EmployeeAccount/Details" class="text-decoration-none">
+                <div class="card border-danger text-danger hover-card">
+                    <div class="card-body">
+                        <h4 class="fw-bold">IMPRESS REQUEST</h4>
+                        <h1 id="impressCountFromHr">0</h1>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+    </div>
+
+    <!--Head impress request for pune-->
+    <!-- ImPRESS Request -->
+    <div class="row g-4 text-center mt-4" id="HeadCard" style="display:none;">
+    <div class="col-lg-6 col-sm-12">
+        <a href="/EmployeeAccount/Index" class="text-decoration-none">
+            <div class="card border-danger text-danger hover-card">
+                <div class="card-body">
+                    <h4 class="fw-bold">IMPRESS REQUEST</h4>
+                    <h1 id="impressCount1">0</h1>
+                </div>
+            </div>
+        </a>
+    </div>
+    </div>
+
+    @* Agm card  *@
+    <div class="row g-4 text-center mt-4" id="agmCard" style="display:none;">
+        <div class="col-lg-6 col-sm-12">
+            <a href="/EmployeeAccount/Index" class="text-decoration-none">
+                <div class="card border-danger text-danger hover-card">
+                    <div class="card-body">
+                        <h4 class="fw-bold">IMPRESS REQUEST</h4>
+                        <h1 id="impressCountFromHrJ">0</h1>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-lg-6 col-sm-12">
+            <a href="/Home/ProjectExpense" class="text-decoration-none">
+                <div class="card border-success text-success hover-card">
+                    <div class="card-body">
+                        <h4 class="fw-bold">Bill Submitted amount</h4>
+                        <h1 id="projectExpense">0</h1>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+    </div>
+
+
+
+    <!-- HR Exclusive Cards -->
+    <div class="row g-4 text-center mt-4" id="hrCards" style="display:none;">
+        <!-- ImPRESS Request -->
+        <div class="col-lg-6 col-sm-12">
+            <a href="/EmployeeAccount/Index" class="text-decoration-none">
+                <div class="card border-danger text-danger hover-card">
+                    <div class="card-body">
+                        <h4 class="fw-bold">IMPRESS REQUEST</h4>
+                        <h1 id="impressCount">0</h1>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+
+        <!-- Employee List -->
+        <div class="col-lg-6 col-sm-12">
+            <a href="/Home/EmployeePendingAmount" class="text-decoration-none">
+                <div class="card border-primary text-primary hover-card">
+                    <div class="card-body">
+                        <h4 class="fw-bold">Bill pending amount</h4>
+                        <h1><i class="fas fa-users"></i></h1>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <!-- New Employee Requests -->
+        <div class="col-lg-6 col-sm-12">
             <a href="/Home/NewEmployees" class="text-decoration-none">
-                <div class="card dashboard-card bg-info text-white shadow-lg h-100">
-                    <div class="card-header fw-bold text-center">
+                <div class="card border-info text-info hover-card h-100">
+                    <div class="card-header fw-bold">
                         <i class="fas fa-user-plus"></i> New Employee Requests
                     </div>
                     <div class="card-body p-2" style="max-height: 300px; overflow-y: auto;">
-                        <ul id="employeePreview" class="list-group list-group-flush">
-                            <!-- Employee names will load here -->
-                        </ul>
+                        <ul id="employeePreview" class="list-group list-group-flush small"></ul>
                     </div>
                 </div>
             </a>
         </div>
 
         <!-- Employee List -->
-        <div class="col-md-6">
+        <div class="col-lg-6 col-sm-12">
             <a href="/Home/EmployeeList" class="text-decoration-none">
-                <div class="card dashboard-card bg-primary text-white shadow-lg">
+                <div class="card border-primary text-primary hover-card">
                     <div class="card-body">
-                        <h3 class="card-title">Employee List</h3>
+                        <h4 class="fw-bold">Employee List</h4>
                         <h1><i class="fas fa-users"></i></h1>
                     </div>
                 </div>
             </a>
         </div>
+
+        <!-- Expense Report -->
+        <div class="col-lg-6 col-sm-12">
+            <a href="/Home/ExpenseReport" class="text-decoration-none">
+                <div class="card border-secondary text-secondary hover-card">
+                    <div class="card-body">
+                        <h4 class="fw-bold"><i class="fas fa-file-invoice-dollar"></i> Expense Report</h4>
+                        <h1><i class="fas fa-chart-line"></i></h1>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+       
+
+        <!-- Type Of Expense -->
+        <div class="col-lg-6 col-sm-12">
+            <a href="/TypeOfExpenses/Index" class="text-decoration-none">
+                <div class="card border-primary text-primary hover-card">
+                    <div class="card-body">
+                        <h4 class="fw-bold">
+                            <i class="fas fa-list-alt me-2"></i> Type Of Expense
+                        </h4>
+                        <h1>
+                            <i class="fas fa-receipt"></i>
+                        </h1>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Expense Limit -->
+        <div class="col-lg-6 col-sm-12">
+            <a href="/ExpenseLimitDetails/Index" class="text-decoration-none">
+                <div class="card border-success text-success hover-card">
+                    <div class="card-body">
+                        <h4 class="fw-bold">
+                            <i class="fas fa-wallet me-2"></i> Expense Limits
+                        </h4>
+                        <h1>
+                            <i class="fas fa-coins"></i>
+                        </h1>
+                    </div>
+                </div>
+            </a>
+        </div>
+
     </div>
 </div>
 
 <style>
-    .dashboard-card {
-        border-radius: 15px;
-        transition: transform 0.3s ease-in-out;
-        cursor: pointer;
-    }
+    /*new year styling*/
+    /* ===== NEW YEAR DASHBOARD BACKGROUND ===== */
+   /*  body {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #0f20ff, #ff3a43, #2cffff);
+        background-attachment: fixed;
+        font-family: 'Segoe UI', sans-serif;
+    } */
 
-        .dashboard-card:hover {
-            transform: scale(1.08);
+        /* Soft animated glow */
+       /*  body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at top, rgba(255,255,255,0.15), transparent 60%);
+            animation: glowMove 6s infinite alternate;
+            pointer-events: none;
         }
 
-    h1 {
+    @@keyframes glowMove {
+        from {
+            opacity: 0.6;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    .new-year-banner h1 {
         font-size: 3rem;
-        font-weight: bold;
+        font-weight: 800;
+        color: #fff;
+        text-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
     }
 
-    /* Employee Requests Vertical Name List */
-    #employeePreview {
-        padding-left: 0;
+    .new-year-banner p {
+        font-size: 1.2rem;
+        color: #f8f9fa;
+        opacity: 0.9;
+    }
+ */
+ 
+
+    /* .spark {
+        position: fixed;
+        top: -20px;
+        width: 8px;
+        height: 8px;
+        background: gold;
+        border-radius: 50%;
+        animation: fall linear infinite;
+        z-index: 1;
     }
 
-        #employeePreview li {
-            cursor: default;
-            padding: 6px 10px;
-            margin-bottom: 4px;
-            border-radius: 6px;
-            background-color: rgba(255, 255, 255, 0.2);
-            list-style: none;
-            transition: background-color 0.2s, transform 0.2s;
+    @@keyframes fall {
+        to {
+            transform: translateY(110vh);
+            opacity: 0;
+        }
+    }
+ */
+    /*above styling of diwali card*/
+    /* Card Hover Effect */
+    .hover-card {
+        border-radius: 15px;
+        transition: all 0.3s ease-in-out;
+        background-color: #fff;
+    }
+
+        .hover-card:hover {
+            color: #fff !important;
+            transform: scale(1.05);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
         }
 
-            #employeePreview li:hover {
-                background-color: rgba(255, 255, 255, 0.35);
-                transform: scale(1.02);
-            }
+    /* Attractive Blue for "Checked" Card */
+    .border-checked {
+        border: 2px solid #007bff;
+        color: #007bff;
+    }
 
+        .border-checked:hover {
+            background-color: #007bff;
+        }
 
-    /* Overlay with blur */
+    /* Existing Hover Colors */
+    .border-warning:hover {
+        background-color: #ffc107;
+    }
+
+    .border-success:hover {
+        background-color: #28a745;
+    }
+
+    .border-danger:hover {
+        background-color: #dc3545;
+    }
+
+    .border-info:hover {
+        background-color: #17a2b8;
+    }
+
+    .border-primary:hover {
+        background-color: #007bff;
+    }
+
+    .border-secondary:hover {
+        background-color: #6c757d;
+    }
+
+    /* Responsive count */
+    h1 {
+        font-size: 2.8rem;
+        font-weight: 700;
+    }
+
+    /* Employee Preview */
+    #employeePreview li {
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 8px;
+        margin-bottom: 6px;
+        padding: 6px;
+    }
+
+        #employeePreview li:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+    /* Loader */
     .loading-overlay {
         position: fixed;
         inset: 0;
-        backdrop-filter: blur(6px); /* 🔥 background blur effect */
+        backdrop-filter: blur(6px);
         background: rgba(255, 255, 255, 0.3);
-        display: none; /* hidden by default */
+        display: none;
         justify-content: center;
         align-items: center;
         z-index: 2000;
     }
 
-    /* Box container */
     .loading-box {
-        background: rgba(255, 255, 255, 0.8);
-        padding: 30px 40px;
-        border-radius: 20px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        background: rgba(255, 255, 255, 0.9);
+        padding: 25px 40px;
+        border-radius: 15px;
         text-align: center;
-        animation: floaty 2s ease-in-out infinite;
     }
-
-    /* Floating animation */
-    @@keyframes floaty {
-        0%, 100% {
-            transform: translateY(0px);
-        }
-
-        50% {
-            transform: translateY(-6px);
-        }
-    }
-
-    /* Icon */
-    .loading-icon {
-        width: 64px;
-        height: 64px;
-        margin-bottom: 12px;
-    }
-
-    /* Text */
-    .loading-text {
-        font-size: 16px;
-        font-weight: 500;
-        color: #333;
-        font-family: "Inter", sans-serif;
-    }
-
-
 </style>
+@* <script>
+    for (let i = 0; i < 20; i++) {
+        const spark = document.createElement("div");
+        spark.className = "spark";
+        spark.style.left = Math.random() * 100 + "vw";
+        spark.style.animationDuration = (Math.random() * 3 + 3) + "s";
+        document.body.appendChild(spark);
+    }
+</script> *@
 
 @section Scripts {
     <script src="~/lib/axios/dist/axios.min.js"></script>
-
     <script>
-
-
-             function showLoader() {
-          document.getElementById("loadingOverlay").style.display = "flex";
-        }
-        function hideLoader() {
-          document.getElementById("loadingOverlay").style.display = "none";
-        }
         document.addEventListener("DOMContentLoaded", function () {
-            // ✅ Values injected from Claims
-
-            
             const empid = "@empid";
             const designation = "@designation";
 
             function reload() {
-                
-                     axios.get(`/api/dashboard/pending?empid=${empid}&designation=${designation}`)
+                axios.get(`/api/dashboard/pending?empid=${empid}&designation=${designation}`)
                     .then(res => document.getElementById("pendingCount").innerText = res.data);
-
                 axios.get(`/api/dashboard/approved?empid=${empid}&designation=${designation}`)
                     .then(res => document.getElementById("approvedCount").innerText = res.data);
-
                 axios.get(`/api/dashboard/rejected?empid=${empid}&designation=${designation}`)
                     .then(res => document.getElementById("rejectedCount").innerText = res.data);
-                
-               
-
-               
+                       axios.get(`/api/dashboard/checked?empid=${empid}&designation=${designation}`)
+                    .then(res => document.getElementById("checkedCount").innerText = res.data);
             }
 
             reload();
             setInterval(reload, 5000);
 
-            // ✅ HR cards visible only for HR designation
+              if (designation === "ACCOUNTS") {
+                document.getElementById("accountCard").style.display = "flex";
+
+
+
+
+                function loadImpressCountFromHr() {
+                    axios.get(`/api/dashboard/impress-pendingaccounts`)
+                        .then(res => document.getElementById("impressCountFromHr").innerText = res.data)
+                        .catch(err => console.error("Error loading Impress count:", err));
+                }
+
+
+                loadImpressCountFromHr();
+
+                setInterval(() => {
+
+                    loadImpressCountFromHr();
+                }, 10000);
+            }
+
+            //Head impress card enable code
+             if (designation === "Head") {
+                document.getElementById("HeadCard").style.display = "flex";
+
+                function loadImpressCount1() {
+                    axios.get(`/api/dashboard/impress-pending`)
+                        .then(res => document.getElementById("impressCount1").innerText = res.data)
+                        .catch(err => console.error("Error loading Impress count:", err));
+                }
+                        loadImpressCount1();
+
+                setInterval(() => {
+
+                    loadImpressCount1();
+                }, 10000);
+
+                  }
+
+            //AGM IMPRESS REQUESTR CARD VALUE SHOW
+
+
+                                // Show AGM card if designation is AGM or Consultant
+        if (designation === "AGM" || designation === "Consultant") {
+            document.getElementById("agmCard").style.display = "flex";
+        }
+
+        // Function to load Impress Request count
+        function loadImpressCountFromHrJ() {
+            axios.get(`/api/dashboard/impress-pendingagm`)
+                .then(res => document.getElementById("impressCountFromHrJ").innerText = res.data)
+                .catch(err => console.error("Error loading Impress count:", err));
+        }
+
+        // Function to load Project Expense
+                function loadTotalImpress() {
+            axios.get(`/api/dashboard/Total-approved`)
+                .then(res => {
+                    // Format number with commas and add rupee symbol
+                    const formattedAmount = `₹${Number(res.data).toLocaleString('en-IN')}`;
+                    document.getElementById("projectExpense").innerText = formattedAmount;
+                })
+                .catch(err => console.error("Error loading Project Expense:", err));
+        }
+
+
+        // Call functions based on designation
+        if (designation === "AGM" || designation === "Consultant") {
+            loadImpressCountFromHrJ();
+            setInterval(loadImpressCountFromHrJ, 10000);
+        }
+
+        if (designation === "AGM") {
+            loadTotalImpress();
+            setInterval(loadTotalImpress, 10000);
+        }
+
+
             if (designation === "HR") {
                 document.getElementById("hrCards").style.display = "flex";
+
                 function loadNewEmployees() {
-                  
                     axios.get(`/api/employee/new`)
                         .then(res => {
                             const preview = document.getElementById("employeePreview");
@@ -234,24 +510,60 @@
                                 preview.appendChild(li);
                             });
                         })
-                        .catch(err => {
-                            console.error("Error loading new employees:", err);
-                        })
-                      
+                        .catch(err => console.error("Error loading new employees:", err));
                 }
+
+                function loadImpressCount() {
+                    axios.get(`/api/dashboard/impress-pending`)
+                        .then(res => document.getElementById("impressCount").innerText = res.data)
+                        .catch(err => console.error("Error loading Impress count:", err));
+                }
+
                 loadNewEmployees();
-                setInterval(loadNewEmployees, 10000); // Refresh every 10 seconds
-                // axios.get(`/api/employee/new`)
-                //     .then(res => {
-                //         const preview = document.getElementById("employeePreview");
-                //         preview.innerHTML = "";
-                //         res.data.forEach(emp => {
-                //             const li = document.createElement("li");
-                //             li.textContent = emp.empName;
-                //             preview.appendChild(li);
-                //         });
-                //     });
+                loadImpressCount();
+
+                setInterval(() => {
+                    loadNewEmployees();
+                    loadImpressCount();
+                }, 10000);
             }
         });
+
+
+        //sweet alert
+          // Success Alert
+        function showSuccess(msg) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Success',
+                text: msg,
+                showConfirmButton: false,
+                timer: 1500
+            });
+        }
+
+        // Error Alert
+        function showError(msg) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: msg
+            });
+        }
+
+        // Confirmation Alert
+        function showConfirm(msg) {
+            return Swal.fire({
+                title: 'Confirm',
+                text: msg,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes',
+                cancelButtonText: 'No'
+            });
+        }
+
     </script>
 }
